@@ -1,0 +1,19 @@
+# 의존성 폴더 (컨테이너 내부에서 새로 설치하므로 제외)
+node_modules
+
+# 빌드 결과물 (컨테이너 내부에서 새로 빌드하므로 제외)
+dist
+
+# 로그 파일
+npm-debug.log
+
+# 환경변수 파일 (보안을 위해 포함하지 않음)
+.env
+
+# Docker 관련 파일들
+Dockerfile
+.dockerignore
+
+# 기타
+README.md
+.git
