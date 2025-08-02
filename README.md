@@ -2,3 +2,5 @@
 
 - 2025년 7월 31일
   DB와 Swagger 셋팅 완료되었습니다. DB연결을 위해서 .env가 필요한데, 노션 팀문서에서 확인하시면 됩니다.
+- 2025년 8월 2일
+  https://api.halsaram.site api서버 배포
