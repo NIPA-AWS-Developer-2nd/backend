@@ -18,7 +18,7 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const configService = app.get(ConfigService);
 
-  // package.json에서 버전 정보 읽기
+  // package.json 버전 정보
   const packageJson: PackageJson = JSON.parse(
     readFileSync(join(__dirname, '..', 'package.json'), 'utf8'),
   ) as PackageJson;
