@@ -6,3 +6,6 @@
   DB와 Swagger 셋팅 완료되었습니다. DB연결을 위해서 .env가 필요한데, 노션 팀문서에서 확인하시면 됩니다.
 - 2025년 8월 2일
   https://api.halsaram.site api서버 배포
+- 2025년 8월 3일
+  Postgres SSL 설정, 예외 처리, 로깅 설정 추가
+  카카오, 네이버, 구글 OAuth API 구현 (사용자 정보 DB에 저장하지 않음)
