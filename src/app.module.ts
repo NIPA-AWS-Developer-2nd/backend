@@ -9,12 +9,15 @@ import { getDatabaseConfig } from './config/database.config';
 import { UserModule } from './user/user.module';
 import { HealthModule } from './health/health.module';
 import { AuthModule } from './auth/auth.module';
+import { AwsModule } from './aws/aws.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: [`.env.${process.env.NODE_ENV}`],
+      envFilePath: process.env.NODE_ENV
+        ? [`.env.${process.env.NODE_ENV}`, '.env']
+        : ['.env'],
       cache: true,
     }),
     TypeOrmModule.forRootAsync({
@@ -79,6 +82,7 @@ import { AuthModule } from './auth/auth.module';
     UserModule,
     HealthModule,
     AuthModule,
+    AwsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

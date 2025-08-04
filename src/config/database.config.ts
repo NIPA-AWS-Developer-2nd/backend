@@ -25,6 +25,13 @@ export const getDatabaseConfig = (
     },
   };
 
+  console.log('--- Environment Variables Debug ---');
+  console.log('NODE_ENV:', process.env.NODE_ENV);
+  console.log('DB_HOST from process.env:', process.env.DB_HOST);
+  console.log(
+    'DB_HOST from configService:',
+    configService.get<string>('DB_HOST'),
+  );
   console.log('--- Loaded Database Config ---');
   console.log('Host:', dbConfig.host);
   console.log('Port:', dbConfig.port);
