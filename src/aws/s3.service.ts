@@ -48,11 +48,26 @@ export class S3Service {
 
   /**
    * 이미지 업로드용 Presigned URL을 생성합니다 (권장 방식)
-   * @param fileName - 원본 파일명
-   * @param contentType - 파일 MIME 타입
-   * @param folder - S3 내 폴더 경로 (선택사항)
+   *
+   * 클라이언트가 서버를 거치지 않고 S3에 직접 업로드할 수 있는 임시 URL을 생성합니다.
+   *
+   * @param fileName - 원본 파일명 (예: 'profile.jpg')
+   * @param contentType - 파일 MIME 타입 ('image/jpeg', 'image/png', 'image/gif', 'image/webp')
+   * @param folder - S3 내 폴더 경로 (선택사항, 예: 'profiles', 'gallery')
    * @param expiresIn - URL 만료 시간 (초, 기본값: 300초/5분)
-   * @returns Presigned URL 정보
+   * @returns Promise<PresignedUrlResult> - uploadUrl, publicUrl, key, expiresIn 포함
+   * @throws Error - 지원하지 않는 파일 형식이거나 AWS 에러 발생 시
+   *
+   * @example
+   * ```typescript
+   * const result = await s3Service.generatePresignedUrl(
+   *   'profile.jpg',
+   *   'image/jpeg',
+   *   'profiles'
+   * );
+   * // result.uploadUrl로 PUT 요청하여 업로드
+   * // result.publicUrl로 업로드된 이미지 접근
+   * ```
    */
   async generatePresignedUrl(
     fileName: string,
@@ -103,11 +118,25 @@ export class S3Service {
   }
 
   /**
-   * 여러 이미지용 Presigned URL들을 생성합니다
-   * @param fileInfos - 파일 정보들 [{fileName, contentType}]
-   * @param folder - S3 내 폴더 경로 (선택사항)
+   * 여러 이미지용 Presigned URL들을 한번에 생성합니다
+   *
+   * 다중 파일 업로드를 위해 여러 개의 Presigned URL을 동시에 생성합니다.
+   *
+   * @param fileInfos - 파일 정보 배열 [{fileName: string, contentType: string}]
+   * @param folder - S3 내 폴더 경로 (선택사항, 모든 파일에 공통 적용)
    * @param expiresIn - URL 만료 시간 (초, 기본값: 300초/5분)
-   * @returns Presigned URL 정보들
+   * @returns Promise<PresignedUrlResult[]> - 각 파일별 Presigned URL 정보 배열
+   * @throws Error - 지원하지 않는 파일 형식이 포함되어 있거나 AWS 에러 발생 시
+   *
+   * @example
+   * ```typescript
+   * const results = await s3Service.generateMultiplePresignedUrls([
+   *   { fileName: 'image1.jpg', contentType: 'image/jpeg' },
+   *   { fileName: 'image2.png', contentType: 'image/png' }
+   * ], 'gallery');
+   *
+   * // 각 result.uploadUrl로 개별 업로드 수행
+   * ```
    */
   async generateMultiplePresignedUrls(
     fileInfos: Array<{ fileName: string; contentType: string }>,
