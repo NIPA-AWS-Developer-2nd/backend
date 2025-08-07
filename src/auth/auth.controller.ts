@@ -1,4 +1,13 @@
-import { Controller, Get, Query, Res, Req, Inject } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Query,
+  Res,
+  Req,
+  Inject,
+  Body,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Request, Response } from 'express';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
@@ -8,6 +17,15 @@ import {
   AuthenticationException,
   InvalidTokenException,
 } from '../common/exceptions';
+import {
+  PhoneVerificationRequest,
+  PhoneVerificationConfirmRequest,
+  CompleteOnboardingRequest,
+} from './types/auth.types';
+import { PhoneVerificationResult } from './service/phone.service';
+import { Public } from './decorators/public.decorator';
+import { CurrentUser } from './decorators/current-user.decorator';
+import { User } from '../entities/user.entity';
 
 @Controller('auth')
 export class AuthController {
@@ -17,6 +35,7 @@ export class AuthController {
     @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger,
   ) {}
 
+  @Public()
   @Get('kakao')
   kakaoAuth(@Res() res: Response) {
     const kakaoAuthUrl = 'https://kauth.kakao.com/oauth/authorize';
@@ -30,6 +49,7 @@ export class AuthController {
     res.redirect(`${kakaoAuthUrl}?${params.toString()}`);
   }
 
+  @Public()
   @Get('kakao/callback')
   async kakaoCallback(
     @Query('code') code: string,
@@ -45,20 +65,34 @@ export class AuthController {
 
     try {
       const result = await this.authService.kakaoLogin(code);
-      this.logger.info('카카오 로그인 성공', {
-        userId: result.user.id,
-      });
 
-      // JWT 토큰을 쿠키에 설정
-      res.cookie('access_token', result.accessToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-      });
+      if ('needsOnboarding' in result) {
+        // 온보딩이 필요한 경우
+        this.logger.info('카카오 소셜 계정 생성됨 - 온보딩 필요', {
+          socialAccountId: result.socialAccountId,
+        });
 
-      // 프론트엔드로 리다이렉트
-      res.redirect(`${this.configService.get('FRONTEND_URL')}/auth/success`);
+        // 온보딩 페이지로 리다이렉트 (socialAccountId를 쿼리 파라미터로)
+        res.redirect(
+          `${this.configService.get('FRONTEND_URL')}/onboarding?socialAccountId=${result.socialAccountId}`,
+        );
+      } else {
+        // 기존 사용자 로그인
+        this.logger.info('카카오 로그인 성공', {
+          userId: result.user.id,
+        });
+
+        // JWT 토큰을 쿠키에 설정
+        res.cookie('access_token', result.accessToken, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'lax',
+          maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+        });
+
+        // 프론트엔드로 리다이렉트
+        res.redirect(`${this.configService.get('FRONTEND_URL')}/auth/success`);
+      }
     } catch (error: unknown) {
       this.logger.error('카카오 로그인 실패', {
         error: error instanceof Error ? error.message : String(error),
@@ -70,6 +104,7 @@ export class AuthController {
     }
   }
 
+  @Public()
   @Get('naver')
   naverAuth(@Res() res: Response) {
     const state = Math.random().toString(36).substring(2, 15);
@@ -81,7 +116,8 @@ export class AuthController {
       state,
     });
 
-    // state 값을 세션이나 쿠키에 저장 (실제 구현에서는 Redis 등 사용 권장)
+    // state 값을 세션이나 쿠키에 저장
+    // TODO: Redis 사용
     res.cookie('naver_state', state, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
@@ -92,6 +128,7 @@ export class AuthController {
     res.redirect(`${naverAuthUrl}?${params.toString()}`);
   }
 
+  @Public()
   @Get('naver/callback')
   async naverCallback(
     @Query('code') code: string,
@@ -108,23 +145,37 @@ export class AuthController {
 
     try {
       const result = await this.authService.naverLogin(code, state);
-      this.logger.info('네이버 로그인 성공', {
-        userId: result.user.id,
-      });
-
-      // JWT 토큰을 쿠키에 설정
-      res.cookie('access_token', result.accessToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-      });
 
       // state 쿠키 제거
       res.clearCookie('naver_state');
 
-      // 프론트엔드로 리다이렉트
-      res.redirect(`${this.configService.get('FRONTEND_URL')}/auth/success`);
+      if ('needsOnboarding' in result) {
+        // 온보딩이 필요한 경우
+        this.logger.info('네이버 소셜 계정 생성됨 - 온보딩 필요', {
+          socialAccountId: result.socialAccountId,
+        });
+
+        // 온보딩 페이지로 리다이렉트
+        res.redirect(
+          `${this.configService.get('FRONTEND_URL')}/onboarding?socialAccountId=${result.socialAccountId}`,
+        );
+      } else {
+        // 기존 사용자 로그인
+        this.logger.info('네이버 로그인 성공', {
+          userId: result.user.id,
+        });
+
+        // JWT 토큰을 쿠키에 설정
+        res.cookie('access_token', result.accessToken, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'lax',
+          maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+        });
+
+        // 프론트엔드로 리다이렉트
+        res.redirect(`${this.configService.get('FRONTEND_URL')}/auth/success`);
+      }
     } catch (error: unknown) {
       this.logger.error('네이버 로그인 실패', {
         error: error instanceof Error ? error.message : String(error),
@@ -137,20 +188,120 @@ export class AuthController {
     }
   }
 
-  @Get('me')
-  getMe(@Req() req: Request) {
+  // 전화번호 인증 코드 발송
+  @Public()
+  @Post('phone/send-code')
+  sendVerificationCode(
+    @Body() body: PhoneVerificationRequest,
+  ): PhoneVerificationResult {
     try {
-      const token = req.cookies['access_token'] as string | undefined;
-      if (!token) {
-        throw new AuthenticationException('토큰이 제공되지 않았습니다');
-      }
-
-      return this.authService.getUserFromToken(token);
-    } catch {
-      throw new InvalidTokenException('유효하지 않은 토큰입니다');
+      const result = this.authService.sendVerificationCode(body.phoneNumber);
+      return result;
+    } catch (error: unknown) {
+      this.logger.error('전화번호 인증 코드 발송 실패', {
+        error: error instanceof Error ? error.message : String(error),
+        phoneNumber: body.phoneNumber,
+      });
+      throw error;
     }
   }
 
+  // 전화번호 인증 및 로그인
+  @Public()
+  @Post('phone/verify-and-login')
+  async verifyPhoneAndLogin(
+    @Body() body: PhoneVerificationConfirmRequest,
+    @Res() res: Response,
+  ) {
+    try {
+      const result = await this.authService.verifyPhoneAndLogin(
+        body.phoneNumber,
+        body.code,
+      );
+
+      this.logger.info('전화번호 인증 로그인 성공', {
+        userId: result.user.id,
+        phoneNumber: body.phoneNumber,
+      });
+
+      // JWT 토큰을 쿠키에 설정
+      res.cookie('access_token', result.accessToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 60 * 60 * 1000, // 1 hour
+      });
+
+      res.cookie('refresh_token', result.refreshToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      });
+
+      return res.json(result);
+    } catch (error: unknown) {
+      this.logger.error('전화번호 인증 로그인 실패', {
+        error: error instanceof Error ? error.message : String(error),
+        phoneNumber: body.phoneNumber,
+      });
+      throw error;
+    }
+  }
+
+  // JWT 인증이 필요한 엔드포인트
+  @Get('me')
+  getMe(@CurrentUser() user: User) {
+    return {
+      id: user.id,
+      phoneNumber: user.phoneNumber,
+      status: user.status,
+      phoneVerifiedAt: user.phoneVerifiedAt,
+      onboardingCompletedAt: user.onboardingCompletedAt,
+      lastLoginAt: user.lastLoginAt,
+      districtVerifiedAt: user.districtVerifiedAt,
+    };
+  }
+
+  // 토큰 리프레시
+  @Public()
+  @Post('refresh')
+  async refreshToken(@Req() req: Request, @Res() res: Response) {
+    try {
+      const refreshToken = req.cookies['refresh_token'] as string | undefined;
+      if (!refreshToken) {
+        throw new AuthenticationException(
+          '리프레시 토큰이 제공되지 않았습니다',
+        );
+      }
+
+      const tokens = await this.authService.refreshAccessToken(refreshToken);
+
+      // 새 토큰을 쿠키에 설정
+      res.cookie('access_token', tokens.accessToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 60 * 60 * 1000, // 1 hour
+      });
+
+      res.cookie('refresh_token', tokens.refreshToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      });
+
+      return res.json({ success: true });
+    } catch (error: unknown) {
+      this.logger.error('토큰 리프레시 실패', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+      throw new InvalidTokenException('유효하지 않은 리프레시 토큰입니다');
+    }
+  }
+
+  @Public()
   @Get('google')
   googleAuth(@Res() res: Response) {
     const googleAuthUrl = 'https://accounts.google.com/o/oauth2/v2/auth';
@@ -166,6 +317,7 @@ export class AuthController {
     res.redirect(`${googleAuthUrl}?${params.toString()}`);
   }
 
+  @Public()
   @Get('google/callback')
   async googleCallback(
     @Query('code') code: string,
@@ -181,20 +333,34 @@ export class AuthController {
 
     try {
       const result = await this.authService.googleLogin(code);
-      this.logger.info('구글 로그인 성공', {
-        userId: result.user.id,
-      });
 
-      // JWT 토큰을 쿠키에 설정
-      res.cookie('access_token', result.accessToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-      });
+      if ('needsOnboarding' in result) {
+        // 온보딩이 필요한 경우
+        this.logger.info('구글 소셜 계정 생성됨 - 온보딩 필요', {
+          socialAccountId: result.socialAccountId,
+        });
 
-      // 프론트엔드로 리다이렉트
-      res.redirect(`${this.configService.get('FRONTEND_URL')}/auth/success`);
+        // 온보딩 페이지로 리다이렉트
+        res.redirect(
+          `${this.configService.get('FRONTEND_URL')}/onboarding?socialAccountId=${result.socialAccountId}`,
+        );
+      } else {
+        // 기존 사용자 로그인
+        this.logger.info('구글 로그인 성공', {
+          userId: result.user.id,
+        });
+
+        // JWT 토큰을 쿠키에 설정
+        res.cookie('access_token', result.accessToken, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'lax',
+          maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+        });
+
+        // 프론트엔드로 리다이렉트
+        res.redirect(`${this.configService.get('FRONTEND_URL')}/auth/success`);
+      }
     } catch (error: unknown) {
       this.logger.error('구글 로그인 실패', {
         error: error instanceof Error ? error.message : String(error),
@@ -206,9 +372,68 @@ export class AuthController {
     }
   }
 
-  @Get('logout')
-  logout(@Res() res: Response) {
-    res.clearCookie('access_token');
-    res.redirect(`${this.configService.get('FRONTEND_URL')}/login`);
+  @Post('logout')
+  async logout(@CurrentUser() user: User, @Res() res: Response) {
+    try {
+      await this.authService.logoutUser(user.id);
+
+      res.clearCookie('access_token');
+      res.clearCookie('refresh_token');
+
+      return res.json({ success: true, message: '로그아웃되었습니다' });
+    } catch (error: unknown) {
+      this.logger.error('로그아웃 실패', {
+        userId: user.id,
+        error: error instanceof Error ? error.message : String(error),
+      });
+
+      // 로그아웃은 실패해도 쿠키는 삭제
+      res.clearCookie('access_token');
+      res.clearCookie('refresh_token');
+
+      return res.json({ success: true, message: '로그아웃되었습니다' });
+    }
+  }
+
+  // 온보딩 완료 및 회원가입
+  @Public()
+  @Post('complete-onboarding')
+  async completeOnboarding(
+    @Body() body: CompleteOnboardingRequest,
+    @Res() res: Response,
+  ) {
+    try {
+      const result = await this.authService.completeOnboarding(body);
+
+      this.logger.info('온보딩 완료 및 회원가입 성공', {
+        userId: result.user.id,
+        phoneNumber: body.phoneNumber,
+        socialAccountId: body.socialAccountId,
+      });
+
+      // JWT 토큰을 쿠키에 설정
+      res.cookie('access_token', result.accessToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 60 * 60 * 1000, // 1 hour
+      });
+
+      res.cookie('refresh_token', result.refreshToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      });
+
+      return res.json(result);
+    } catch (error: unknown) {
+      this.logger.error('온보딩 완료 실패', {
+        error: error instanceof Error ? error.message : String(error),
+        phoneNumber: body.phoneNumber,
+        socialAccountId: body.socialAccountId,
+      });
+      throw error;
+    }
   }
 }
