@@ -9,6 +9,15 @@ import {
 import { Request, Response } from 'express';
 import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { Logger } from 'winston';
+import { ApiResponseDto } from '../dto/api-response.dto';
+import { ErrorCode } from '../types/common.types';
+
+interface HttpExceptionResponse {
+  message?: string | string[];
+  errorCode?: string;
+  error?: string;
+  statusCode?: number;
+}
 
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
@@ -21,23 +30,45 @@ export class AllExceptionsFilter implements ExceptionFilter {
     const response = ctx.getResponse<Response>();
     const request = ctx.getRequest<Request>();
 
-    const status =
-      exception instanceof HttpException
-        ? exception.getStatus()
-        : HttpStatus.INTERNAL_SERVER_ERROR;
+    let status: number;
+    let message: string;
+    let errorCode: string;
 
-    const message =
-      exception instanceof HttpException
-        ? exception.getResponse()
-        : 'Internal server error';
+    if (exception instanceof HttpException) {
+      status = exception.getStatus();
+      const exceptionResponse = exception.getResponse() as
+        | string
+        | HttpExceptionResponse;
+
+      if (typeof exceptionResponse === 'object' && exceptionResponse.message) {
+        message = Array.isArray(exceptionResponse.message)
+          ? exceptionResponse.message.join(', ')
+          : exceptionResponse.message;
+        errorCode =
+          exceptionResponse.errorCode || this.getDefaultErrorCode(status);
+      } else {
+        message =
+          typeof exceptionResponse === 'string'
+            ? exceptionResponse
+            : '요청 처리 중 오류가 발생했습니다.';
+        errorCode = this.getDefaultErrorCode(status);
+      }
+    } else {
+      status = HttpStatus.INTERNAL_SERVER_ERROR;
+      message = '서버 내부 오류가 발생했습니다.';
+      errorCode = ErrorCode.SYSTEM_INTERNAL_ERROR;
+    }
 
     // 에러 로깅
     const errorLog = {
+      errorCode,
       statusCode: status,
       timestamp: new Date().toISOString(),
       path: request.url,
       method: request.method,
-      message: typeof message === 'string' ? message : JSON.stringify(message),
+      message,
+      userAgent: request.get('User-Agent'),
+      ip: request.ip,
       stack: exception instanceof Error ? exception.stack : undefined,
     };
 
@@ -47,17 +78,37 @@ export class AllExceptionsFilter implements ExceptionFilter {
       this.logger.warn('클라이언트 에러 발생', errorLog);
     }
 
-    // 응답 포맷 통일
-    const errorResponse = {
-      statusCode: status,
+    // 공통 응답 형식 사용
+    const errorResponse = new ApiResponseDto(status, message, false, {
+      errorCode,
       timestamp: new Date().toISOString(),
       path: request.url,
-      message: typeof message === 'object' ? message : { message },
       ...(process.env.NODE_ENV !== 'production' && exception instanceof Error
         ? { stack: exception.stack }
         : {}),
-    };
+    });
 
     response.status(status).json(errorResponse);
+  }
+
+  private getDefaultErrorCode(status: number): string {
+    if (status === 401) {
+      // HttpStatus.UNAUTHORIZED
+      return ErrorCode.AUTH_UNAUTHORIZED;
+    } else if (status === 403) {
+      // HttpStatus.FORBIDDEN
+      return ErrorCode.AUTH_UNAUTHORIZED;
+    } else if (status === 404) {
+      // HttpStatus.NOT_FOUND
+      return ErrorCode.USER_NOT_FOUND;
+    } else if (status === 400) {
+      // HttpStatus.BAD_REQUEST
+      return ErrorCode.VALIDATION_FAILED;
+    } else if (status === 409) {
+      // HttpStatus.CONFLICT
+      return ErrorCode.USER_ALREADY_EXISTS;
+    } else {
+      return ErrorCode.SYSTEM_INTERNAL_ERROR;
+    }
   }
 }
