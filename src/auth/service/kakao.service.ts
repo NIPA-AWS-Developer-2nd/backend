@@ -1,11 +1,16 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, Inject } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
+import { Logger } from 'winston';
 import axios from 'axios';
 import { KakaoTokenResponse, KakaoUserResponse } from '../types';
 
 @Injectable()
 export class KakaoService {
-  constructor(private configService: ConfigService) {}
+  constructor(
+    private configService: ConfigService,
+    @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger,
+  ) {}
 
   async getAccessToken(code: string): Promise<KakaoTokenResponse> {
     try {
@@ -30,7 +35,15 @@ export class KakaoService {
       return response.data;
     } catch (error: unknown) {
       if (axios.isAxiosError(error)) {
-        console.error('카카오 토큰 교환 에러:', error.response?.data);
+        this.logger.error('카카오 토큰 교환 에러', {
+          error: error.message,
+          responseData: error.response?.data as unknown,
+          status: error.response?.status,
+        });
+      } else {
+        this.logger.error('카카오 토큰 교환 에러', {
+          error: error instanceof Error ? error.message : String(error),
+        });
       }
 
       throw new UnauthorizedException('카카오 토큰을 가져올 수 없습니다.');
@@ -59,7 +72,15 @@ export class KakaoService {
       };
     } catch (error: unknown) {
       if (axios.isAxiosError(error)) {
-        console.error('카카오 API 에러:', error.response?.data);
+        this.logger.error('카카오 API 에러', {
+          error: error.message,
+          responseData: error.response?.data as unknown,
+          status: error.response?.status,
+        });
+      } else {
+        this.logger.error('카카오 API 에러', {
+          error: error instanceof Error ? error.message : String(error),
+        });
       }
 
       throw new UnauthorizedException(
