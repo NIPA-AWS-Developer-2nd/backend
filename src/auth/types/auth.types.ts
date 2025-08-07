@@ -6,16 +6,60 @@ export interface UserInfo {
   provider?: 'kakao' | 'naver' | 'google';
 }
 
+export interface SocialAccountInfo {
+  provider: 'kakao' | 'naver' | 'google';
+  email?: string;
+  profileImageUrl?: string;
+}
+
+export interface LoginUser {
+  id: string;
+  phoneNumber?: string;
+  status: string;
+  onboardingCompleted: boolean;
+  socialAccounts?: SocialAccountInfo[];
+}
+
 export interface LoginResult {
   accessToken: string;
-  user: UserInfo & { provider: 'kakao' | 'naver' | 'google' };
+  refreshToken: string;
+  user: LoginUser;
 }
 
 export interface JwtPayload {
-  sub: string | number;
-  email: string;
-  nickname: string;
-  provider: 'kakao' | 'naver' | 'google';
+  sub: string;
+  phoneNumber?: string;
   iat?: number;
   exp?: number;
 }
+
+export interface PhoneVerificationRequest {
+  phoneNumber: string;
+}
+
+export interface PhoneVerificationConfirmRequest {
+  phoneNumber: string;
+  code: string;
+}
+
+export interface CompleteOnboardingRequest {
+  socialAccountId: string;
+  phoneNumber: string;
+  nickname: string;
+  birthYear: number;
+  gender: string;
+  districtId: string;
+  categoryIds: string[];
+}
+
+export interface OnboardingNeeded {
+  socialAccountId: string;
+  needsOnboarding: true;
+  socialAccount: {
+    provider: string;
+    email?: string;
+    profileImageUrl?: string;
+  };
+}
+
+export type SocialLoginResult = LoginResult | OnboardingNeeded;
