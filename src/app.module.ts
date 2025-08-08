@@ -13,11 +13,14 @@ import { AuthModule } from './auth/auth.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 
+
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: [`.env.${process.env.NODE_ENV}`],
+      envFilePath: process.env.NODE_ENV
+        ? [`.env.${process.env.NODE_ENV}`, '.env']
+        : ['.env'],
       cache: true,
     }),
     TypeOrmModule.forRootAsync({
@@ -82,6 +85,7 @@ import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
     UserModule,
     HealthModule,
     AuthModule,
+    AwsModule,
   ],
   controllers: [AppController],
   providers: [
