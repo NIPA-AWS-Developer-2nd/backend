@@ -1,10 +1,15 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, Inject } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
+import { Logger } from 'winston';
 import { GoogleTokenResponse, GoogleUserInfo } from '../types';
 
 @Injectable()
 export class GoogleService {
-  constructor(private configService: ConfigService) {}
+  constructor(
+    private configService: ConfigService,
+    @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger,
+  ) {}
 
   async getAccessToken(code: string): Promise<GoogleTokenResponse> {
     const tokenUrl = 'https://oauth2.googleapis.com/token';
@@ -29,7 +34,7 @@ export class GoogleService {
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('구글 토큰 요청 에러:', errorText);
+        this.logger.error('구글 토큰 요청 에러', { errorText });
         throw new UnauthorizedException('구글 토큰 요청 실패');
       }
 
@@ -43,7 +48,9 @@ export class GoogleService {
         token_type: data.token_type,
       };
     } catch (error: unknown) {
-      console.error('구글 토큰 예외 발생:', error);
+      this.logger.error('구글 토큰 예외 발생', {
+        error: error instanceof Error ? error.message : String(error),
+      });
       throw new UnauthorizedException('구글 토큰을 가져올 수 없습니다.');
     }
   }
@@ -60,7 +67,10 @@ export class GoogleService {
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('구글 사용자 정보 요청 에러:', errorText);
+        this.logger.error('구글 사용자 정보 요청 에러', {
+          errorText,
+          accessToken: accessToken.substring(0, 10) + '...',
+        });
         throw new UnauthorizedException('구글 사용자 정보 요청 실패');
       }
 
@@ -73,7 +83,10 @@ export class GoogleService {
         profileImage: data.picture || '',
       };
     } catch (error: unknown) {
-      console.error('구글 사용자 정보 예외 발생:', error);
+      this.logger.error('구글 사용자 정보 예외 발생', {
+        error: error instanceof Error ? error.message : String(error),
+        accessToken: accessToken.substring(0, 10) + '...',
+      });
       throw new UnauthorizedException('구글 사용자 정보를 가져올 수 없습니다.');
     }
   }

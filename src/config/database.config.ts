@@ -1,5 +1,18 @@
 import { TypeOrmModuleOptions } from '@nestjs/typeorm';
 import { ConfigService } from '@nestjs/config';
+import * as winston from 'winston';
+
+const logger = winston.createLogger({
+  level: 'info',
+  format: winston.format.combine(
+    winston.format.timestamp(),
+    winston.format.colorize(),
+    winston.format.printf(({ timestamp, level, message }) => {
+      return `[${String(timestamp)}] ${String(level)}: ${String(message)}`;
+    }),
+  ),
+  transports: [new winston.transports.Console()],
+});
 
 export const getDatabaseConfig = (
   configService: ConfigService,
@@ -12,7 +25,7 @@ export const getDatabaseConfig = (
     password: configService.get<string>('DB_PASSWORD'),
     database: configService.get<string>('DB_NAME'),
     entities: [__dirname + '/../**/*.entity{.ts,.js}'],
-    synchronize: configService.get<string>('NODE_ENV') === 'development',
+    synchronize: false,
     logging: configService.get<string>('NODE_ENV') === 'development',
     ssl:
       configService.get<string>('NODE_ENV') === 'production'
@@ -24,6 +37,7 @@ export const getDatabaseConfig = (
       connectionLimit: 10,
     },
   };
+
 
   console.log('--- Environment Variables Debug ---');
   console.log('NODE_ENV:', process.env.NODE_ENV);
@@ -39,7 +53,6 @@ export const getDatabaseConfig = (
   console.log('Database:', dbConfig.database);
   console.log('Synchronize:', dbConfig.synchronize);
   console.log('-----------------------------');
-  // ------------------------------------
 
   return dbConfig;
 };

@@ -2,14 +2,17 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { WinstonModule } from 'nest-winston';
+import { APP_GUARD, APP_FILTER } from '@nestjs/core';
 import * as winston from 'winston';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { getDatabaseConfig } from './config/database.config';
-import { UserModule } from './user/user.module';
+import { UserModule } from './modules/user/user.module';
 import { HealthModule } from './health/health.module';
 import { AuthModule } from './auth/auth.module';
-import { AwsModule } from './aws/aws.module';
+import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
+import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
+
 
 @Module({
   imports: [
@@ -85,6 +88,16 @@ import { AwsModule } from './aws/aws.module';
     AwsModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    {
+      provide: APP_GUARD,
+      useClass: JwtAuthGuard,
+    },
+    {
+      provide: APP_FILTER,
+      useClass: AllExceptionsFilter,
+    },
+  ],
 })
 export class AppModule {}

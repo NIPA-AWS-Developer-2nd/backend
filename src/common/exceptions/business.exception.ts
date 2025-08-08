@@ -1,11 +1,17 @@
 import { HttpException, HttpStatus } from '@nestjs/common';
+import { ErrorCode } from '../types/common.types';
 
 export class BusinessException extends HttpException {
-  constructor(message: string, statusCode = HttpStatus.BAD_REQUEST) {
+  constructor(
+    message: string,
+    errorCode = ErrorCode.SYSTEM_INTERNAL_ERROR,
+    statusCode = HttpStatus.BAD_REQUEST,
+  ) {
     super(
       {
         error: 'Business Logic Error',
         message,
+        errorCode,
         statusCode,
       },
       statusCode,
@@ -14,12 +20,17 @@ export class BusinessException extends HttpException {
 }
 
 export class ValidationException extends HttpException {
-  constructor(message: string | string[], field?: string) {
+  constructor(
+    message: string | string[],
+    field?: string,
+    errorCode = ErrorCode.VALIDATION_FAILED,
+  ) {
     super(
       {
         error: 'Validation Error',
         message,
         field,
+        errorCode,
         statusCode: HttpStatus.BAD_REQUEST,
       },
       HttpStatus.BAD_REQUEST,
@@ -28,7 +39,11 @@ export class ValidationException extends HttpException {
 }
 
 export class ResourceNotFoundException extends HttpException {
-  constructor(resource: string, id?: string | number) {
+  constructor(
+    resource: string,
+    id?: string | number,
+    errorCode = ErrorCode.USER_NOT_FOUND,
+  ) {
     const message = id
       ? `${resource}(ID: ${id})을(를) 찾을 수 없습니다`
       : `${resource}을(를) 찾을 수 없습니다`;
@@ -39,6 +54,7 @@ export class ResourceNotFoundException extends HttpException {
         message,
         resource,
         id,
+        errorCode,
         statusCode: HttpStatus.NOT_FOUND,
       },
       HttpStatus.NOT_FOUND,
@@ -47,7 +63,11 @@ export class ResourceNotFoundException extends HttpException {
 }
 
 export class DuplicateResourceException extends HttpException {
-  constructor(resource: string, field?: string) {
+  constructor(
+    resource: string,
+    field?: string,
+    errorCode = ErrorCode.USER_ALREADY_EXISTS,
+  ) {
     const message = field
       ? `${resource}의 ${field}이(가) 이미 존재합니다`
       : `${resource}이(가) 이미 존재합니다`;
@@ -58,6 +78,7 @@ export class DuplicateResourceException extends HttpException {
         message,
         resource,
         field,
+        errorCode,
         statusCode: HttpStatus.CONFLICT,
       },
       HttpStatus.CONFLICT,

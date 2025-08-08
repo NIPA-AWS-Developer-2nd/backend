@@ -1,11 +1,18 @@
-## 할사람 백엔드
+## Halsaram API
 
-기본으로 user가 생성되어있는데 삭제 후 새로 개발하면 됩니다.
+### 변경 이력
 
-- 2025년 7월 31일
-  DB와 Swagger 셋팅 완료되었습니다. DB연결을 위해서 .env가 필요한데, 노션 팀문서에서 확인하시면 됩니다.
-- 2025년 8월 2일
-  https://api.halsaram.site api서버 배포
-- 2025년 8월 3일
-  Postgres SSL 설정, 예외 처리, 로깅 설정 추가
-  카카오, 네이버, 구글 OAuth API 구현 (사용자 정보 DB에 저장하지 않음)
+- **2025-07-31**
+  - DB 및 Swagger 셋업 완료
+  - DB 연결을 위해 `.env` 파일 필요 (노션 팀 문서 참고)
+- **2025-08-02**
+  - [https://api.halsaram.site](https://api.halsaram.site) API 서버 배포
+- **2025-08-03**
+  - Postgres SSL 설정 추가
+  - 예외 처리 및 로깅 설정 추가
+  - 카카오, 네이버, 구글 OAuth API 구현 (사용자 정보는 DB에 저장하지 않음)
+- **2025-08-08**
+  - Entities 추가
+  - TypeORM 설정, 마이그레이션 추가
+  - Seeder 추가
+  - JWT 가드 구현
