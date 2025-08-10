@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
-import { v4 as uuidv4 } from 'uuid';
+import { ulid } from 'ulid';
 
 export interface PresignedUrlResult {
   uploadUrl: string;
@@ -47,54 +47,36 @@ export class S3Service {
   }
 
   /**
-   * 이미지 업로드용 Presigned URL을 생성합니다 (권장 방식)
+   * 이미지 업로드용 Presigned URL을 생성합니다
    *
    * 클라이언트가 서버를 거치지 않고 S3에 직접 업로드할 수 있는 임시 URL을 생성합니다.
+   * 모든 이미지 타입(jpg, png, gif, webp)을 지원합니다.
    *
-   * @param fileName - 원본 파일명 (예: 'profile.jpg')
-   * @param contentType - 파일 MIME 타입 ('image/jpeg', 'image/png', 'image/gif', 'image/webp')
-   * @param folder - S3 내 폴더 경로 (선택사항, 예: 'profiles', 'gallery')
+   * @param folder - S3 내 폴더 경로 (예: 'profiles', 'meeting_thumbnails')
    * @param expiresIn - URL 만료 시간 (초, 기본값: 300초/5분)
    * @returns Promise<PresignedUrlResult> - uploadUrl, publicUrl, key, expiresIn 포함
-   * @throws Error - 지원하지 않는 파일 형식이거나 AWS 에러 발생 시
    *
    * @example
    * ```typescript
-   * const result = await s3Service.generatePresignedUrl(
-   *   'profile.jpg',
-   *   'image/jpeg',
-   *   'profiles'
-   * );
-   * // result.uploadUrl로 PUT 요청하여 업로드
+   * const result = await s3Service.generatePresignedUrl('profiles');
+   * // result.uploadUrl로 PUT 요청하여 이미지 업로드
    * // result.publicUrl로 업로드된 이미지 접근
    * ```
    */
   async generatePresignedUrl(
-    fileName: string,
-    contentType: string,
-    folder?: string,
+    folder: string,
     expiresIn: number = 300,
+    contentType?: string,
   ): Promise<PresignedUrlResult> {
-    // 파일 확장자 검증
-    const allowedMimeTypes = [
-      'image/jpeg',
-      'image/png',
-      'image/gif',
-      'image/webp',
-    ];
-    if (!allowedMimeTypes.includes(contentType)) {
-      throw new Error('지원하지 않는 이미지 형식입니다.');
-    }
-
-    const fileExtension = fileName.split('.').pop();
-    const uniqueFileName = `${uuidv4()}.${fileExtension}`;
-    const key = folder ? `${folder}/${uniqueFileName}` : uniqueFileName;
+    // 고유 파일명 생성 (확장자는 업로드 시 결정)
+    const uniqueFileName = ulid();
+    const key = `original/${folder}/${uniqueFileName}`;
 
     try {
       const command = new PutObjectCommand({
         Bucket: this.bucketName,
         Key: key,
-        ContentType: contentType,
+        ContentType: contentType || 'image/jpeg', // Content-Type 설정
       });
 
       // Presigned URL 생성
@@ -112,8 +94,63 @@ export class S3Service {
         publicUrl,
         expiresIn,
       };
-    } catch (error) {
-      throw new Error(`Presigned URL 생성 실패: ${error.message}`);
+    } catch (error: unknown) {
+      throw new Error(
+        `Presigned URL 생성 실패: ${error instanceof Error ? error.message : '알 수 없는 오류'}`,
+      );
+    }
+  }
+
+  /**
+   * 프로필 이미지용 Presigned URL을 생성합니다
+   *
+   * 사용자별로 고유한 프로필 이미지를 위해 userId를 파일명으로 사용합니다.
+   * 기존 이미지가 있으면 덮어쓰게 됩니다.
+   *
+   * @param userId - 사용자 ID (ULID)
+   * @param expiresIn - URL 만료 시간 (초, 기본값: 300초/5분)
+   * @returns Promise<PresignedUrlResult> - uploadUrl, publicUrl, key, expiresIn 포함
+   *
+   * @example
+   * ```typescript
+   * const result = await s3Service.generateProfileImagePresignedUrl(userId);
+   * // result.uploadUrl로 PUT 요청하여 프로필 이미지 업로드
+   * ```
+   */
+  async generateProfileImagePresignedUrl(
+    userId: string,
+    expiresIn: number = 300,
+    contentType?: string,
+  ): Promise<PresignedUrlResult> {
+    // userId를 파일명으로 사용 (확장자 없이)
+    const key = `original/profiles/${userId}`;
+
+    try {
+      const command = new PutObjectCommand({
+        Bucket: this.bucketName,
+        Key: key,
+        ContentType: contentType || 'image/jpeg', // Content-Type 설정
+      });
+
+      // Presigned URL 생성
+      const uploadUrl = await getSignedUrl(this.s3Client, command, {
+        expiresIn,
+      });
+
+      const publicUrl = this.cloudFrontDomain
+        ? `https://${this.cloudFrontDomain}/${key}`
+        : `https://${this.bucketName}.s3.${this.configService.get('AWS_REGION')}.amazonaws.com/${key}`;
+
+      return {
+        uploadUrl,
+        key,
+        publicUrl,
+        expiresIn,
+      };
+    } catch (error: unknown) {
+      throw new Error(
+        `프로필 이미지 Presigned URL 생성 실패: ${error instanceof Error ? error.message : '알 수 없는 오류'}`,
+      );
     }
   }
 
@@ -122,34 +159,25 @@ export class S3Service {
    *
    * 다중 파일 업로드를 위해 여러 개의 Presigned URL을 동시에 생성합니다.
    *
-   * @param fileInfos - 파일 정보 배열 [{fileName: string, contentType: string}]
-   * @param folder - S3 내 폴더 경로 (선택사항, 모든 파일에 공통 적용)
+   * @param count - 생성할 URL 개수
+   * @param folder - S3 내 폴더 경로 (예: 'verifications')
    * @param expiresIn - URL 만료 시간 (초, 기본값: 300초/5분)
    * @returns Promise<PresignedUrlResult[]> - 각 파일별 Presigned URL 정보 배열
-   * @throws Error - 지원하지 않는 파일 형식이 포함되어 있거나 AWS 에러 발생 시
    *
    * @example
    * ```typescript
-   * const results = await s3Service.generateMultiplePresignedUrls([
-   *   { fileName: 'image1.jpg', contentType: 'image/jpeg' },
-   *   { fileName: 'image2.png', contentType: 'image/png' }
-   * ], 'gallery');
+   * const results = await s3Service.generateMultiplePresignedUrls(3, 'verifications');
    *
    * // 각 result.uploadUrl로 개별 업로드 수행
    * ```
    */
   async generateMultiplePresignedUrls(
-    fileInfos: Array<{ fileName: string; contentType: string }>,
-    folder?: string,
+    count: number,
+    folder: string,
     expiresIn: number = 300,
   ): Promise<PresignedUrlResult[]> {
-    const urlPromises = fileInfos.map((fileInfo) =>
-      this.generatePresignedUrl(
-        fileInfo.fileName,
-        fileInfo.contentType,
-        folder,
-        expiresIn,
-      ),
+    const urlPromises = Array.from({ length: count }, () =>
+      this.generatePresignedUrl(folder, expiresIn),
     );
     return Promise.all(urlPromises);
   }
