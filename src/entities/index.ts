@@ -8,3 +8,4 @@ export { Category } from './category.entity';
 export { Level } from './level.entity';
 export { UserInterests } from './user-interests.entity';
 export { UserHashtags } from './user-hashtags.entity';
+export { Mission, MissionDifficulty } from './mission.entity';
