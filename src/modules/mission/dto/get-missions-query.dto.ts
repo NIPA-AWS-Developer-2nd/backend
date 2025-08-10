@@ -1,5 +1,5 @@
 import { IsOptional, IsString, IsEnum, IsInt, Min, Max } from 'class-validator';
-import { Transform, Type } from 'class-transformer';
+import { Type } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
 
 export enum DifficultyEnum {
@@ -38,7 +38,8 @@ export class GetMissionsQueryDto {
   participants?: string;
 
   @ApiProperty({
-    description: '예상시간 필터 (short: 90분 이하, medium: 90-180분, long: 180분 초과)',
+    description:
+      '예상시간 필터 (short: 90분 이하, medium: 90-180분, long: 180분 초과)',
     required: false,
     example: 'long',
   })
@@ -47,7 +48,8 @@ export class GetMissionsQueryDto {
   duration?: string;
 
   @ApiProperty({
-    description: '포인트 범위 필터 (low: 400P 미만, medium: 400-799P, high: 800P 이상)',
+    description:
+      '포인트 범위 필터 (low: 400P 미만, medium: 400-799P, high: 800P 이상)',
     required: false,
     example: 'high',
   })

@@ -1,5 +1,17 @@
-import { Controller, Get, Query } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
+import {
+  Controller,
+  Get,
+  Query,
+  Param,
+  NotFoundException,
+} from '@nestjs/common';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiQuery,
+  ApiParam,
+} from '@nestjs/swagger';
 import { MissionService } from './mission.service';
 import { ApiResponseDto } from '../../common/dto/api-response.dto';
 import { Public } from '../../auth/decorators/public.decorator';
@@ -52,7 +64,8 @@ export class MissionController {
           {
             id: '01HQXXX-CULTURE-LOTTE',
             title: '송파구 롯데월드 어트랙션 체험',
-            description: '송파구 롯데월드에서 5개 이상의 어트랙션을 체험하고 사진을 공유하세요.',
+            description:
+              '송파구 롯데월드에서 5개 이상의 어트랙션을 체험하고 사진을 공유하세요.',
             point: 1200,
             duration: 240,
             minParticipants: 4,
@@ -61,13 +74,14 @@ export class MissionController {
             minPhotoCount: 5,
             difficulty: 'HARD',
             regionCode: '11710',
-            thumbnailUrl: 'https://images.unsplash.com/photo-1465996140498-df84be101126?q=80&w=1974&auto=format&fit=crop&ixlib=rb-4.0.1&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+            thumbnailUrl:
+              'https://images.unsplash.com/photo-1465996140498-df84be101126?q=80&w=1974&auto=format&fit=crop&ixlib=rb-4.0.1&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
             category: ['culture'],
             status: 'ACTIVE',
             createdBy: 'admin',
             createdAt: '2024-01-01T00:00:00Z',
             updatedAt: '2024-01-01T00:00:00Z',
-          }
+          },
         ],
         pagination: {
           page: 1,
@@ -76,15 +90,78 @@ export class MissionController {
           totalPages: 5,
           hasNextPage: true,
           hasPreviousPage: false,
-        }
-      }
-    }
+        },
+      },
+    },
   })
   async findAll(@Query() query: GetMissionsQueryDto) {
     const result = await this.missionService.findAll(query);
     return ApiResponseDto.success(
       result,
       '미션 목록을 성공적으로 조회했습니다.',
+    );
+  }
+
+  @Public()
+  @Get(':id')
+  @ApiOperation({
+    summary: '미션 상세 조회',
+    description: '특정 미션의 상세 정보를 조회합니다.',
+  })
+  @ApiParam({
+    name: 'id',
+    description: '미션 ID (ULID)',
+    example: '01HQXXX-CULTURE-LOTTE',
+  })
+  @ApiResponse({
+    status: 200,
+    description: '미션 상세 조회 성공',
+    example: {
+      status: 200,
+      message: '미션 상세 정보를 성공적으로 조회했습니다.',
+      result: true,
+      data: {
+        id: '01HQXXX-CULTURE-LOTTE',
+        title: '송파구 롯데월드 어트랙션 체험',
+        description:
+          '송파구 롯데월드에서 5개 이상의 어트랙션을 체험하고 사진을 공유하세요.',
+        point: 1200,
+        duration: 240,
+        minParticipants: 4,
+        maxParticipants: 10,
+        minDuration: 180,
+        minPhotoCount: 1,
+        difficulty: 'HARD',
+        region_code: '11710',
+        thumbnailUrl:
+          'https://images.unsplash.com/photo-1465996140498-df84be101126',
+        category: ['culture'],
+        status: 'ACTIVE',
+        createdBy: 'admin',
+        createdAt: '2024-01-01T00:00:00Z',
+        updatedAt: '2024-01-01T00:00:00Z',
+      },
+    },
+  })
+  @ApiResponse({
+    status: 404,
+    description: '미션을 찾을 수 없음',
+    example: {
+      status: 404,
+      message: '미션을 찾을 수 없습니다.',
+      result: false,
+    },
+  })
+  async findOne(@Param('id') id: string) {
+    const mission = await this.missionService.findOne(id);
+
+    if (!mission) {
+      throw new NotFoundException('미션을 찾을 수 없습니다.');
+    }
+
+    return ApiResponseDto.success(
+      mission,
+      '미션 상세 정보를 성공적으로 조회했습니다.',
     );
   }
 }

@@ -344,9 +344,11 @@ export const seedInitialData = async (dataSource: DataSource) => {
       maxParticipants: 6,
       minimumDuration: 90,
       difficulty: MissionDifficulty.EASY,
-      thumbnailUrl: 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?q=80&w=1287&auto=format&fit=crop&ixlib=rb-4.0.1&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+      thumbnailUrl:
+        'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?q=80&w=1287&auto=format&fit=crop&ixlib=rb-4.0.1&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
       categorySlug: 'food',
-      photoVerificationGuide: '음식 사진, 메뉴판, 가게 외관, 함께 식사하는 모습을 촬영해주세요. 음식이 잘 보이도록 밝은 곳에서 촬영하면 좋습니다.',
+      photoVerificationGuide:
+        '음식 사진, 메뉴판, 가게 외관, 함께 식사하는 모습을 촬영해주세요. 음식이 잘 보이도록 밝은 곳에서 촬영하면 좋습니다.',
       sampleImageUrls: [
         'https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?w=400',
         'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=400',
@@ -368,9 +370,11 @@ export const seedInitialData = async (dataSource: DataSource) => {
       maxParticipants: 8,
       minimumDuration: 60,
       difficulty: MissionDifficulty.MEDIUM,
-      thumbnailUrl: 'https://images.unsplash.com/photo-1659242710553-3f8513f136b3?q=80&w=2071&auto=format&fit=crop&ixlib=rb-4.0.1&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+      thumbnailUrl:
+        'https://images.unsplash.com/photo-1659242710553-3f8513f136b3?q=80&w=2071&auto=format&fit=crop&ixlib=rb-4.0.1&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
       categorySlug: 'sports',
-      photoVerificationGuide: '러닝 시작 전과 완주 후 사진을 촬영해주세요. 러닝 앱이나 스마트워치의 기록 화면도 함께 촬영하면 좋습니다. 5km 완주 인증을 위해 러닝 경로와 거리를 확인할 수 있는 사진이 필요합니다.',
+      photoVerificationGuide:
+        '러닝 시작 전과 완주 후 사진을 촬영해주세요. 러닝 앱이나 스마트워치의 기록 화면도 함께 촬영하면 좋습니다. 5km 완주 인증을 위해 러닝 경로와 거리를 확인할 수 있는 사진이 필요합니다.',
       sampleImageUrls: [
         'https://images.unsplash.com/photo-1552674605-db6ffd4facb5?w=400',
         'https://images.unsplash.com/photo-1659242710553-3f8513f136b3?w=400',
@@ -385,16 +389,19 @@ export const seedInitialData = async (dataSource: DataSource) => {
     {
       id: '01JG9H7E2HQMC8GN1VKXR6W3TB',
       title: '송파구 롯데월드 어트랙션 체험',
-      description: '송파구 롯데월드에서 5개 이상의 어트랙션을 체험하고 사진을 공유하세요.',
+      description:
+        '송파구 롯데월드에서 5개 이상의 어트랙션을 체험하고 사진을 공유하세요.',
       basePoints: 1200,
       estimatedDuration: 240,
       minParticipants: 4,
       maxParticipants: 10,
       minimumDuration: 180,
       difficulty: MissionDifficulty.HARD,
-      thumbnailUrl: 'https://images.unsplash.com/photo-1465996140498-df84be101126?q=80&w=1974&auto=format&fit=crop&ixlib=rb-4.0.1&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+      thumbnailUrl:
+        'https://images.unsplash.com/photo-1465996140498-df84be101126?q=80&w=1974&auto=format&fit=crop&ixlib=rb-4.0.1&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
       categorySlug: 'culture',
-      photoVerificationGuide: '각 어트랙션에서 탑승 전후 사진을 촬영해주세요. 어트랙션 이름이 보이는 안내판과 함께 인증샷을 찍어주시면 됩니다. 최소 5개 어트랙션에서 각각 1장씩 사진이 필요합니다.',
+      photoVerificationGuide:
+        '각 어트랙션에서 탑승 전후 사진을 촬영해주세요. 어트랙션 이름이 보이는 안내판과 함께 인증샷을 찍어주시면 됩니다. 최소 5개 어트랙션에서 각각 1장씩 사진이 필요합니다.',
       sampleImageUrls: [
         'https://images.unsplash.com/photo-1465996140498-df84be101126?w=400',
         'https://images.unsplash.com/photo-1586882829491-b81178aa622e?w=400',
@@ -416,9 +423,11 @@ export const seedInitialData = async (dataSource: DataSource) => {
       maxParticipants: 6,
       minimumDuration: 60,
       difficulty: MissionDifficulty.EASY,
-      thumbnailUrl: 'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=400&h=300&fit=crop',
+      thumbnailUrl:
+        'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=400&h=300&fit=crop',
       categorySlug: 'cafe',
-      photoVerificationGuide: '카페 외관, 내부 인테리어, 주문한 음료를 함께 촬영해주세요. 카페 이름이 보이는 메뉴판이나 로고도 함께 찍으면 좋습니다.',
+      photoVerificationGuide:
+        '카페 외관, 내부 인테리어, 주문한 음료를 함께 촬영해주세요. 카페 이름이 보이는 메뉴판이나 로고도 함께 찍으면 좋습니다.',
       sampleImageUrls: [
         'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=400',
         'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=400',
@@ -440,9 +449,11 @@ export const seedInitialData = async (dataSource: DataSource) => {
       maxParticipants: 6,
       minimumDuration: 90,
       difficulty: MissionDifficulty.EASY,
-      thumbnailUrl: 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=400&h=300&fit=crop',
+      thumbnailUrl:
+        'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=400&h=300&fit=crop',
       categorySlug: 'gaming',
-      photoVerificationGuide: '당구대에서 게임하는 모습과 점수판을 촬영해주세요. 당구장 내부와 함께 게임을 즐기는 모습을 찍어주시면 됩니다.',
+      photoVerificationGuide:
+        '당구대에서 게임하는 모습과 점수판을 촬영해주세요. 당구장 내부와 함께 게임을 즐기는 모습을 찍어주시면 됩니다.',
       sampleImageUrls: [
         'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=400',
         'https://images.unsplash.com/photo-1566577134770-3d85bb3a9cc4?w=400',
@@ -457,16 +468,19 @@ export const seedInitialData = async (dataSource: DataSource) => {
     {
       id: '01JG9H7E2LQMC8GN1VKXR6W3TE',
       title: '송파구 박물관 탐방',
-      description: '송파구 내 박물관을 방문하고 전시품과 함께 사진을 촬영하세요.',
+      description:
+        '송파구 내 박물관을 방문하고 전시품과 함께 사진을 촬영하세요.',
       basePoints: 700,
       estimatedDuration: 180,
       minParticipants: 4,
       maxParticipants: 6,
       minimumDuration: 120,
       difficulty: MissionDifficulty.MEDIUM,
-      thumbnailUrl: 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=400&h=300&fit=crop',
+      thumbnailUrl:
+        'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=400&h=300&fit=crop',
       categorySlug: 'culture',
-      photoVerificationGuide: '박물관 외관, 주요 전시품, 박물관 내부 모습을 촬영해주세요. 전시품과 함께 인증샷을 찍을 때는 플래시 촬영 금지 안내문을 확인해주세요.',
+      photoVerificationGuide:
+        '박물관 외관, 주요 전시품, 박물관 내부 모습을 촬영해주세요. 전시품과 함께 인증샷을 찍을 때는 플래시 촬영 금지 안내문을 확인해주세요.',
       sampleImageUrls: [
         'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=400',
         'https://images.unsplash.com/photo-1581833971358-2c8b550f87b3?w=400',
@@ -488,9 +502,11 @@ export const seedInitialData = async (dataSource: DataSource) => {
       maxParticipants: 8,
       minimumDuration: 90,
       difficulty: MissionDifficulty.EASY,
-      thumbnailUrl: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=400&h=300&fit=crop',
+      thumbnailUrl:
+        'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=400&h=300&fit=crop',
       categorySlug: 'shopping',
-      photoVerificationGuide: '쇼핑몰 외관, 내부 모습, 구매한 상품이나 쇼핑백을 촬영해주세요. 대형 쇼핑몰의 경우 랜드마크나 안내판과 함께 찍으면 좋습니다.',
+      photoVerificationGuide:
+        '쇼핑몰 외관, 내부 모습, 구매한 상품이나 쇼핑백을 촬영해주세요. 대형 쇼핑몰의 경우 랜드마크나 안내판과 함께 찍으면 좋습니다.',
       sampleImageUrls: [
         'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=400',
         'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=400',
@@ -505,16 +521,19 @@ export const seedInitialData = async (dataSource: DataSource) => {
     {
       id: '01JG9H7E2NQMC8GN1VKXR6W3TG',
       title: '송파구 쿠킹 클래스 체험',
-      description: '송파구 요리 스튜디오에서 함께 요리를 배우고 완성품을 인증하세요.',
+      description:
+        '송파구 요리 스튜디오에서 함께 요리를 배우고 완성품을 인증하세요.',
       basePoints: 800,
       estimatedDuration: 180,
       minParticipants: 4,
       maxParticipants: 8,
       minimumDuration: 120,
       difficulty: MissionDifficulty.MEDIUM,
-      thumbnailUrl: 'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=400&h=300&fit=crop',
+      thumbnailUrl:
+        'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=400&h=300&fit=crop',
       categorySlug: 'food',
-      photoVerificationGuide: '요리 시작 전 준비된 재료, 요리 과정, 완성된 요리를 촬영해주세요. 함께 요리하는 모습과 완성품을 들었을 때의 기념샷도 찍어주시면 좋습니다.',
+      photoVerificationGuide:
+        '요리 시작 전 준비된 재료, 요리 과정, 완성된 요리를 촬영해주세요. 함께 요리하는 모습과 완성품을 들었을 때의 기념샷도 찍어주시면 좋습니다.',
       sampleImageUrls: [
         'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=400',
         'https://images.unsplash.com/photo-1507048331197-7d4ac70811cf?w=400',
@@ -529,16 +548,19 @@ export const seedInitialData = async (dataSource: DataSource) => {
     {
       id: '01JG9H7E2PQMC8GN1VKXR6W3TH',
       title: '송파구 한강공원 사진 촬영',
-      description: '송파구 한강공원에서 일몰과 야경을 배경으로 인생샷을 촬영하세요.',
+      description:
+        '송파구 한강공원에서 일몰과 야경을 배경으로 인생샷을 촬영하세요.',
       basePoints: 650,
       estimatedDuration: 120,
       minParticipants: 4,
       maxParticipants: 6,
       minimumDuration: 90,
       difficulty: MissionDifficulty.EASY,
-      thumbnailUrl: 'https://images.unsplash.com/photo-1502920917128-1aa500764cbd?w=800&h=600&fit=crop',
+      thumbnailUrl:
+        'https://images.unsplash.com/photo-1502920917128-1aa500764cbd?w=800&h=600&fit=crop',
       categorySlug: 'photo',
-      photoVerificationGuide: '일출이 잘 보이는 위치에서 촬영해주세요. 한강과 일출이 함께 나오도록 구도를 잡으시면 됩니다. 최소 3장 이상의 사진이 필요하며, 시간대는 일출 전후 30분 이내여야 합니다.',
+      photoVerificationGuide:
+        '일출이 잘 보이는 위치에서 촬영해주세요. 한강과 일출이 함께 나오도록 구도를 잡으시면 됩니다. 최소 3장 이상의 사진이 필요하며, 시간대는 일출 전후 30분 이내여야 합니다.',
       sampleImageUrls: [
         'https://images.unsplash.com/photo-1505142468610-359e7d316be0?w=400',
         'https://images.unsplash.com/photo-1502920917128-1aa500764cbd?w=400',
@@ -558,7 +580,9 @@ export const seedInitialData = async (dataSource: DataSource) => {
   });
 
   if (!songpaDistrict) {
-    logger.error('송파구 정보를 찾을 수 없습니다. 미션 시드 데이터를 건너뜁니다.');
+    logger.error(
+      '송파구 정보를 찾을 수 없습니다. 미션 시드 데이터를 건너뜁니다.',
+    );
   } else {
     // 미션 데이터 생성
     for (const mission of missionData) {
@@ -577,7 +601,9 @@ export const seedInitialData = async (dataSource: DataSource) => {
       });
 
       if (!category) {
-        logger.warn(`카테고리 '${mission.categorySlug}'를 찾을 수 없어 미션 '${mission.title}'를 건너뜁니다.`);
+        logger.warn(
+          `카테고리 '${mission.categorySlug}'를 찾을 수 없어 미션 '${mission.title}'를 건너뜁니다.`,
+        );
         continue;
       }
 
