@@ -6,15 +6,15 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 
-@Entity('mission_categories')
-export class Category {
+@Entity('user_interests')
+export class UserInterests {
   @PrimaryGeneratedColumn()
   id: number;
 
   @Column({ type: 'varchar', length: 50 })
   name: string;
 
-  @Column({ type: 'varchar', length: 50 })
+  @Column({ type: 'varchar', length: 50, unique: true })
   slug: string;
 
   @Column({ type: 'varchar', length: 100, nullable: true })

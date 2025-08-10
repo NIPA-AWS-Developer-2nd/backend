@@ -5,9 +5,11 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   OneToOne,
+  ManyToOne,
   JoinColumn,
 } from 'typeorm';
 import { User } from './user.entity';
+import { District } from './district.entity';
 
 export enum Gender {
   MALE = 'male',
@@ -29,31 +31,32 @@ export class UserProfile {
   profileImageUrl: string;
 
   @Column({ type: 'int', array: true, default: () => "'{}'" })
-  categoryIds: number[];
+  interestIds: number[];
+
+  @Column({ type: 'int', array: true, default: () => "'{}'" })
+  hashtagIds: number[];
 
   @Column({ type: 'varchar', length: 4, nullable: true })
-  mbti: string;
+  mbti: string | null;
 
-  @Column({ type: 'varchar', length: 5 })
-  districtId: string;
+  @Column({ type: 'varchar', length: 26, nullable: true })
+  districtId: string | null;
 
   @Column({ type: 'varchar', length: 200, nullable: true })
-  bio: string;
+  bio: string | null;
 
-  @Column({ type: 'int' })
-  birthYear: number;
+  @Column({ type: 'int', nullable: true })
+  birthYear: number | null;
 
   @Column({
     type: 'enum',
     enum: Gender,
+    nullable: true,
   })
-  gender: Gender;
+  gender: Gender | null;
 
   @Column({ type: 'int', default: 0 })
   points: number;
-
-  @Column({ type: 'int', default: 1 })
-  level: number;
 
   @CreateDateColumn()
   createdAt: Date;
@@ -64,4 +67,8 @@ export class UserProfile {
   @OneToOne(() => User)
   @JoinColumn({ name: 'userId' })
   user: User;
+
+  @ManyToOne(() => District, { nullable: true })
+  @JoinColumn({ name: 'districtId' })
+  district: District | null;
 }

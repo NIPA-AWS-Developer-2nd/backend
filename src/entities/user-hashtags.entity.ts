@@ -6,19 +6,13 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 
-@Entity('mission_categories')
-export class Category {
+@Entity('user_hashtags')
+export class UserHashtags {
   @PrimaryGeneratedColumn()
   id: number;
 
   @Column({ type: 'varchar', length: 50 })
   name: string;
-
-  @Column({ type: 'varchar', length: 50 })
-  slug: string;
-
-  @Column({ type: 'varchar', length: 100, nullable: true })
-  icon: string;
 
   @Column({ type: 'boolean', default: true })
   isActive: boolean;
