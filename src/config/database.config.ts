@@ -2,7 +2,7 @@ import { TypeOrmModuleOptions } from '@nestjs/typeorm';
 import { ConfigService } from '@nestjs/config';
 import * as winston from 'winston';
 
-const logger = winston.createLogger({
+const _logger = winston.createLogger({
   level: 'info',
   format: winston.format.combine(
     winston.format.timestamp(),
@@ -38,21 +38,19 @@ export const getDatabaseConfig = (
     },
   };
 
-
-  console.log('--- Environment Variables Debug ---');
+  console.log('===== Environment Variables Debug =====');
   console.log('NODE_ENV:', process.env.NODE_ENV);
   console.log('DB_HOST from process.env:', process.env.DB_HOST);
   console.log(
     'DB_HOST from configService:',
     configService.get<string>('DB_HOST'),
   );
-  console.log('--- Loaded Database Config ---');
+  console.log('===== Loaded Database Config =====');
   console.log('Host:', dbConfig.host);
   console.log('Port:', dbConfig.port);
   console.log('Username:', dbConfig.username);
   console.log('Database:', dbConfig.database);
   console.log('Synchronize:', dbConfig.synchronize);
-  console.log('-----------------------------');
 
   return dbConfig;
 };
