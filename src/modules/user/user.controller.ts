@@ -1,15 +1,13 @@
-import { Controller, Get, Post, Body, Param, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Put, Body } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { UserService } from './user.service';
-import { CreateUserDto } from './dto/create-user.dto';
 import { OnboardingCompleteDto } from './dto/onboarding.dto';
+import { UpdateProfileDto } from './dto/update-profile.dto';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
-import { Public } from '../../auth/decorators/public.decorator';
 import { User } from '../../entities/user.entity';
 import { ApiResponseDto } from '../../common/dto/api-response.dto';
 import {
   ResourceNotFoundException,
-  DuplicateResourceException,
   ValidationException,
 } from '../../common/exceptions';
 import { ErrorCode } from '../../common/types/common.types';
@@ -70,7 +68,113 @@ export class UserController {
     }
   }
 
-  // 내 프로필 조회
+  // 내 사용자 정보 조회
+  @ApiOperation({
+    summary: '내 사용자 정보 조회',
+    description: '현재 로그인한 사용자의 기본 정보와 프로필을 모두 조회합니다.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: '사용자 정보 조회 성공',
+    example: {
+      status: 200,
+      message: '사용자 정보 조회가 완료되었습니다.',
+      result: true,
+      data: {
+        id: '01HQXXX...',
+        phoneNumber: '01012345678',
+        status: 'ACTIVE',
+        onboardingCompletedAt: '2024-01-15T01:00:00Z',
+        profile: {
+          nickname: '사용자',
+          profileImageUrl: 'https://example.com/image.jpg',
+          interests: ['문화', '스포츠'],
+        },
+      },
+    },
+  })
+  @Get('me')
+  async getMe(@CurrentUser() user: User) {
+    try {
+      const result = await this.userService.getCompleteUserInfo(user.id);
+
+      if (!result) {
+        throw new ResourceNotFoundException(
+          '사용자',
+          user.id,
+          ErrorCode.USER_NOT_FOUND,
+        );
+      }
+
+      return ApiResponseDto.success(
+        result,
+        '사용자 정보 조회가 완료되었습니다.',
+      );
+    } catch (error: unknown) {
+      if (error instanceof ResourceNotFoundException) {
+        throw error;
+      }
+      throw new ValidationException('사용자 정보 조회 중 오류가 발생했습니다.');
+    }
+  }
+
+  // 내 프로필 업데이트
+  @ApiOperation({
+    summary: '내 프로필 업데이트',
+    description: '현재 로그인한 사용자의 프로필 정보를 업데이트합니다.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: '프로필 업데이트 성공',
+    example: {
+      status: 200,
+      message: '프로필이 업데이트되었습니다.',
+      result: true,
+      data: {
+        id: '01HQXXX...',
+        profile: {
+          nickname: '업데이트된 닉네임',
+          bio: '업데이트된 소개',
+          profileImageUrl: 'https://example.com/new-image.jpg',
+          interests: ['문화', '스포츠'],
+          mbti: 'ENFP',
+        },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 400,
+    description: '잘못된 요청 데이터',
+    example: {
+      status: 400,
+      message: '유효하지 않은 카테고리 ID입니다.',
+      result: false,
+    },
+  })
+  @Put('profile')
+  async updateMyProfile(
+    @Body() updateProfileDto: UpdateProfileDto,
+    @CurrentUser() user: User,
+  ) {
+    try {
+      const result = await this.userService.updateUserProfile(
+        user.id,
+        updateProfileDto,
+      );
+      return ApiResponseDto.success(result, '프로필이 업데이트되었습니다.');
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        throw new ValidationException(
+          error.message,
+          undefined,
+          ErrorCode.VALIDATION_FAILED,
+        );
+      }
+      throw error;
+    }
+  }
+
+  // 내 프로필 조회 (기존 유지)
   @ApiOperation({
     summary: '내 프로필 조회',
     description: '현재 로그인한 사용자의 프로필 정보를 조회합니다.',
@@ -89,6 +193,7 @@ export class UserController {
   async getMyProfile(@CurrentUser() user: User) {
     try {
       const result = await this.userService.getUserProfile(user.id);
+
       if (!result) {
         throw new ResourceNotFoundException(
           '사용자 프로필',
@@ -96,6 +201,7 @@ export class UserController {
           ErrorCode.USER_NOT_FOUND,
         );
       }
+
       return ApiResponseDto.success(result, '프로필 조회가 완료되었습니다.');
     } catch (error: unknown) {
       if (error instanceof ResourceNotFoundException) {
@@ -105,125 +211,33 @@ export class UserController {
     }
   }
 
-  // 지역 목록 조회 (공개 API)
+  // 활동 통계 조회
   @ApiOperation({
-    summary: '지역 목록 조회',
-    description: '사용 가능한 서울시 구 목록을 조회합니다.',
+    summary: '활동 통계 조회',
+    description: '사용자의 활동 통계 정보를 조회합니다.',
   })
   @ApiResponse({
     status: 200,
-    description: '지역 목록 조회 성공',
+    description: '활동 통계 조회 성공',
     example: {
       status: 200,
-      message: '지역 목록 조회가 완료되었습니다.',
+      message: '활동 통계 조회가 완료되었습니다.',
       result: true,
-      data: [{ id: 'seoul-gangnam', name: '강남구', region: 'seoul' }],
+      data: {
+        verificationCount: 45,
+        reviewCount: 24,
+        hostedMeetingCount: 18,
+        completedMissionCount: 12,
+      },
     },
   })
-  @Public()
-  @Get('districts')
-  async getDistricts() {
+  @Get('activity-stats')
+  async getActivityStats(@CurrentUser() user: User) {
     try {
-      const result = await this.userService.getDistricts();
-      return ApiResponseDto.success(result, '지역 목록 조회가 완료되었습니다.');
+      const result = await this.userService.getActivityStats(user.id);
+      return ApiResponseDto.success(result, '활동 통계 조회가 완료되었습니다.');
     } catch {
-      throw new ValidationException('지역 목록 조회 중 오류가 발생했습니다.');
-    }
-  }
-
-  // 카테고리 목록 조회 (공개 API)
-  @ApiOperation({
-    summary: '카테고리 목록 조회',
-    description: '사용 가능한 관심 카테고리 목록을 조회합니다.',
-  })
-  @ApiResponse({
-    status: 200,
-    description: '카테고리 목록 조회 성공',
-    example: {
-      status: 200,
-      message: '카테고리 목록 조회가 완료되었습니다.',
-      result: true,
-      data: [{ id: 1, name: '음식', icon: '🍽️' }],
-    },
-  })
-  @Public()
-  @Get('categories')
-  async getCategories() {
-    try {
-      const result = await this.userService.getCategories();
-      return ApiResponseDto.success(
-        result,
-        '카테고리 목록 조회가 완료되었습니다.',
-      );
-    } catch {
-      throw new ValidationException(
-        '카테고리 목록 조회 중 오류가 발생했습니다.',
-      );
-    }
-  }
-
-  @ApiOperation({
-    summary: '사용자 생성',
-    description: '새로운 사용자를 생성합니다.',
-  })
-  @Public()
-  @Post()
-  async create(@Body() createUserDto: CreateUserDto) {
-    try {
-      const result = await this.userService.create(createUserDto);
-      return ApiResponseDto.created(result, '사용자가 생성되었습니다.');
-    } catch (error: unknown) {
-      if (error instanceof Error && error.message.includes('중복')) {
-        throw new DuplicateResourceException(
-          '사용자',
-          'phoneNumber',
-          ErrorCode.USER_PHONE_ALREADY_EXISTS,
-        );
-      }
-      throw new ValidationException('사용자 생성 중 오류가 발생했습니다.');
-    }
-  }
-
-  @ApiOperation({
-    summary: '사용자 목록 조회',
-    description: '모든 사용자 목록을 조회합니다.',
-  })
-  @Public()
-  @Get()
-  async findAll() {
-    try {
-      const result = await this.userService.findAll();
-      return ApiResponseDto.success(
-        result,
-        '사용자 목록 조회가 완료되었습니다.',
-      );
-    } catch {
-      throw new ValidationException('사용자 목록 조회 중 오류가 발생했습니다.');
-    }
-  }
-
-  @ApiOperation({
-    summary: '사용자 삭제 (BO)',
-    description: '지정된 사용자를 삭제합니다.',
-  })
-  @Delete(':id')
-  async remove(@Param('id') id: string, @CurrentUser() _user: User) {
-    try {
-      // TODO: 관리자 권한 체크 로직 추가
-      const result = await this.userService.remove(id);
-      return ApiResponseDto.success(result, '사용자가 삭제되었습니다.');
-    } catch (error: unknown) {
-      if (
-        error instanceof Error &&
-        error.message.includes('찾을 수 없습니다')
-      ) {
-        throw new ResourceNotFoundException(
-          '사용자',
-          id,
-          ErrorCode.USER_NOT_FOUND,
-        );
-      }
-      throw new ValidationException('사용자 삭제 중 오류가 발생했습니다.');
+      throw new ValidationException('활동 통계 조회 중 오류가 발생했습니다.');
     }
   }
 }

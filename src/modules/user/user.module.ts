@@ -7,8 +7,9 @@ import {
   UserProfile,
   UserRewards,
   District,
-  Category,
+  UserInterests,
   Level,
+  UserHashtags,
 } from '../../entities';
 
 @Module({
@@ -18,8 +19,9 @@ import {
       UserProfile,
       UserRewards,
       District,
-      Category,
+      UserInterests,
       Level,
+      UserHashtags,
     ]),
   ],
   controllers: [UserController],

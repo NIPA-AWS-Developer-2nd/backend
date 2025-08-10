@@ -1,8 +1,21 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable, Inject } from '@nestjs/common';
+import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
+import { Logger } from 'winston';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
+import { parseTimeToMs } from '../common/constants/time.constants';
+import {
+  UserNotFoundException,
+  OnboardingAlreadyCompletedException,
+  PhoneNumberAlreadyExistsException,
+  RefreshTokenInvalidException,
+  RefreshTokenExpiredException,
+  VerificationFailedException,
+  AccountMergeFailedException,
+} from '../common/exceptions/business.exception';
+import { InvalidTokenException } from '../common/exceptions/auth.exception';
 import { KakaoService } from './service/kakao.service';
 import { NaverService } from './service/naver.service';
 import { GoogleService } from './service/google.service';
@@ -44,6 +57,7 @@ export class AuthService {
     private userProfileRepository: Repository<UserProfile>,
     @InjectRepository(UserRewards)
     private userRewardsRepository: Repository<UserRewards>,
+    @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger,
   ) {}
 
   // 전화번호 인증 코드 발송
@@ -55,13 +69,64 @@ export class AuthService {
   async verifyPhoneAndLogin(
     phoneNumber: string,
     code: string,
+    currentUserId?: string,
   ): Promise<LoginResult> {
-    const isValid = this.phoneService.verifyCode(phoneNumber, code);
+    const verificationResult = await this.phoneService.verifyCode(
+      phoneNumber,
+      code,
+    );
 
-    if (!isValid) {
-      throw new BadRequestException('인증에 실패했습니다.');
+    if (!verificationResult.success) {
+      throw new VerificationFailedException();
     }
 
+    // Case 1: 기존 전화번호 사용자가 있고 현재 임시 사용자가 있는 경우 -> 계정 통합
+    if (verificationResult.existingUser && currentUserId) {
+      return await this.mergeAccounts(
+        currentUserId,
+        verificationResult.existingUser.id,
+      );
+    }
+
+    // Case 2: 현재 임시 사용자가 있는 경우 -> 임시 사용자에 전화번호 추가
+    if (currentUserId) {
+      const currentUser = await this.userRepository.findOne({
+        where: { id: currentUserId },
+      });
+
+      if (currentUser) {
+        // 이미 다른 사용자가 이 전화번호를 사용 중인지 확인
+        const existingPhoneUser = await this.userRepository.findOne({
+          where: { phoneNumber },
+        });
+
+        // 다른 사용자가 이 번호를 사용 중이면 계정 통합
+        if (existingPhoneUser && existingPhoneUser.id !== currentUserId) {
+          return await this.mergeAccounts(currentUserId, existingPhoneUser.id);
+        }
+
+        // 임시 사용자에 전화번호 설정
+        currentUser.phoneNumber = phoneNumber;
+        currentUser.phoneVerifiedAt = new Date();
+        await this.userRepository.save(currentUser);
+
+        const tokens = await this.generateTokens(currentUser);
+
+        return {
+          accessToken: tokens.accessToken,
+          refreshToken: tokens.refreshToken,
+          user: {
+            id: currentUser.id,
+            phoneNumber: currentUser.phoneNumber,
+            status: currentUser.status,
+            onboardingCompleted: !!currentUser.onboardingCompletedAt,
+          },
+          merged: false,
+        };
+      }
+    }
+
+    // Case 3: 기존 사용자 로그인 또는 새 사용자 생성 (일반 전화번호 로그인)
     const user = await this.phoneService.findOrCreateUser(phoneNumber);
     const tokens = await this.generateTokens(user);
 
@@ -74,6 +139,150 @@ export class AuthService {
         status: user.status,
         onboardingCompleted: !!user.onboardingCompletedAt,
       },
+      merged: false,
+    };
+  }
+
+  // 계정 통합 로직
+  private async mergeAccounts(
+    currentUserId: string,
+    existingUserId: string,
+  ): Promise<LoginResult> {
+    // 현재 사용자 정보 조회
+    const currentUser = await this.userRepository.findOne({
+      where: { id: currentUserId },
+      relations: ['socialAccounts'],
+    });
+
+    if (!currentUser) {
+      throw new UserNotFoundException(currentUserId);
+    }
+
+    // 기존 사용자 정보 조회
+    const existingUser = await this.userRepository.findOne({
+      where: { id: existingUserId },
+      relations: ['socialAccounts'],
+    });
+
+    if (!existingUser) {
+      throw new UserNotFoundException(existingUserId);
+    }
+
+    // 임시 사용자 삭제 전에 이전할 소셜 계정 정보 저장
+    const socialAccountsToTransfer =
+      (currentUser.socialAccounts as SocialAccount[]) || [];
+
+    // 트랜잭션으로 계정 통합 처리
+    let updatedExistingUser:
+      | (User & { socialAccounts?: SocialAccount[] })
+      | null = null;
+
+    try {
+      await this.userRepository.manager.transaction(async (manager) => {
+        // 현재 사용자의 토큰을 무효화
+        await manager.update(
+          AuthToken,
+          { userId: currentUserId },
+          { isRevoked: true },
+        );
+
+        // 현재 사용자의 관련 데이터 삭제
+        // UserProfile 삭제 (임시 사용자의 프로필만 삭제, 기존 사용자는 유지)
+        await manager.delete(UserProfile, { userId: currentUserId });
+        // UserRewards 삭제
+        await manager.delete(UserRewards, { userId: currentUserId });
+        // AuthToken 삭제 (이미 무효화했지만 삭제 필요함)
+        await manager.delete(AuthToken, { userId: currentUserId });
+
+        // 기존 사용자의 마지막 로그인 시간 업데이트
+        existingUser.lastLoginAt = new Date();
+        await manager.save(existingUser);
+
+        // 소셜 계정의 외래키 제약조건 해제 (userId를 NULL로 설정)
+        if (socialAccountsToTransfer.length > 0) {
+          for (const socialAccount of socialAccountsToTransfer) {
+            await manager.update(
+              SocialAccount,
+              { id: socialAccount.id },
+              { userId: null },
+            );
+          }
+        }
+
+        // 현재 임시 사용자 삭제
+        await manager.delete(User, { id: currentUserId });
+
+        // 소셜 계정들을 기존 사용자와 연결
+        if (socialAccountsToTransfer.length > 0) {
+          for (const socialAccount of socialAccountsToTransfer) {
+            // social 계정 userId 업데이트
+            await manager.update(
+              SocialAccount,
+              { id: socialAccount.id },
+              { userId: existingUserId },
+            );
+          }
+        }
+
+        // 기존 사용자의 업데이트된 소셜 계정 정보 다시 조회
+        updatedExistingUser = await manager.findOne(User, {
+          where: { id: existingUserId },
+          relations: ['socialAccounts'],
+        });
+
+        // 통합 검증 로깅
+        if (
+          updatedExistingUser?.socialAccounts &&
+          Array.isArray(updatedExistingUser.socialAccounts)
+        ) {
+          this.logger.info('계정 통합 검증: 기존 사용자의 소셜 계정 조회', {
+            existingUserId,
+            socialAccountsCount: updatedExistingUser.socialAccounts.length,
+            socialAccounts: updatedExistingUser.socialAccounts.map((sa) => ({
+              id: sa.id,
+              provider: sa.provider,
+              userId: sa.userId,
+            })),
+          });
+        }
+      });
+    } catch (error) {
+      this.logger.error('계정 통합 실패', {
+        currentUserId,
+        existingUserId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      throw new AccountMergeFailedException(
+        '계정 통합 처리 중 오류가 발생했습니다.',
+      );
+    }
+
+    // 트랜잭션 외부에서 새 토큰 생성 (DB 충돌 방지)
+    const tokens = await this.generateTokens(existingUser);
+
+    return {
+      accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
+      user: {
+        id: existingUser.id,
+        phoneNumber: existingUser.phoneNumber,
+        status: existingUser.status,
+        onboardingCompleted: !!existingUser.onboardingCompletedAt,
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+        socialAccounts:
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+          updatedExistingUser && (updatedExistingUser as any).socialAccounts
+            ? // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
+              (updatedExistingUser as any).socialAccounts.map(
+                (account: SocialAccount) => ({
+                  provider: account.provider,
+                  email: account.email,
+                  profileImageUrl: account.profileImageUrl,
+                }),
+              )
+            : [],
+      },
+      merged: true,
     };
   }
 
@@ -179,9 +388,50 @@ export class AuthService {
         },
       };
     } else {
-      // 새로운 소셜 계정 - User는 생성하지 않고 SocialAccount만 저장
+      // 새로운 소셜 로그인 사용자
+      // 먼저 이메일로 기존 미완료 온보딩 사용자가 있는지 확인
+      let user: User | null = null;
+
+      if (email) {
+        // 이메일이 있으면 같은 이메일을 가진 소셜 계정 확인
+        const existingSocialAccount =
+          await this.socialAccountRepository.findOne({
+            where: { email },
+            relations: ['user'],
+          });
+
+        // 온보딩 미완료 사용자만 재사용
+        if (
+          existingSocialAccount?.user &&
+          !existingSocialAccount.user.onboardingCompletedAt
+        ) {
+          user = existingSocialAccount.user;
+          this.logger.info('온보딩 미완료 사용자 재사용', {
+            userId: user.id,
+            email,
+            provider,
+          });
+        }
+      }
+
+      // 재사용할 사용자가 없으면 새로 생성
+      if (!user) {
+        user = new User();
+        user.phoneNumber = null;
+        user.status = UserStatus.ACTIVE;
+        user.lastLoginAt = new Date();
+        user.onboardingCompletedAt = null;
+        user.phoneVerifiedAt = null;
+        await this.userRepository.save(user);
+      } else {
+        // 기존 사용자 재사용 시 마지막 로그인 시간 업데이트
+        user.lastLoginAt = new Date();
+        await this.userRepository.save(user);
+      }
+
+      // 소셜 계정 생성 또는 업데이트하고 User와 연결
       if (socialAccount) {
-        // 소셜 계정 정보 업데이트
+        socialAccount.userId = user.id;
         socialAccount.accessToken = accessToken;
         if (refreshToken) {
           socialAccount.refreshToken = refreshToken;
@@ -190,9 +440,8 @@ export class AuthService {
         socialAccount.profileImageUrl = profileImage;
         await this.socialAccountRepository.save(socialAccount);
       } else {
-        // 새 소셜 계정 생성 (userId는 null)
         socialAccount = this.socialAccountRepository.create({
-          userId: null,
+          userId: user.id,
           provider,
           providerId,
           email,
@@ -203,14 +452,27 @@ export class AuthService {
         await this.socialAccountRepository.save(socialAccount);
       }
 
-      // 온보딩이 필요한 소셜 계정 정보 반환
+      // 기본 사용자 데이터 생성
+      await this.createDefaultUserData(user.id, nickname, profileImage);
+
+      // JWT 토큰 생성 및 반환
+      const tokens = await this.generateTokens(user);
+
       return {
-        socialAccountId: socialAccount.id,
-        needsOnboarding: true,
-        socialAccount: {
-          provider: socialAccount.provider,
-          email: socialAccount.email,
-          profileImageUrl: socialAccount.profileImageUrl,
+        accessToken: tokens.accessToken,
+        refreshToken: tokens.refreshToken,
+        user: {
+          id: user.id,
+          phoneNumber: user.phoneNumber,
+          status: user.status,
+          onboardingCompleted: !!user.onboardingCompletedAt,
+          socialAccounts: [
+            {
+              provider: socialAccount.provider,
+              email: socialAccount.email,
+              profileImageUrl: socialAccount.profileImageUrl,
+            },
+          ],
         },
       };
     }
@@ -222,17 +484,19 @@ export class AuthService {
     nickname: string,
     profileImage: string,
   ) {
-    // UserProfile 생성 (기본값으로)
+    // UserProfile 생성 (OAuth 정보로 초기화)
     const profile = this.userProfileRepository.create({
       userId,
-      nickname: nickname || '사용자',
+      nickname: nickname || '알 수 없음',
       profileImageUrl: profileImage || '',
-      categoryIds: [],
-      birthYear: new Date().getFullYear() - 25, // 기본 25세
-      gender: Gender.MALE, // 기본값
-      districtId: '', // 온보딩에서 설정
+      interestIds: [],
+      hashtagIds: [],
+      birthYear: null,
+      gender: null,
+      districtId: null,
+      bio: null,
+      mbti: null,
       points: 0,
-      level: 1,
     });
     await this.userProfileRepository.save(profile);
 
@@ -245,10 +509,10 @@ export class AuthService {
   }
 
   // JWT 토큰 생성 및 DB 저장
-  private async generateTokens(user: User) {
+  async generateTokens(user: User) {
     const payload: JwtPayload = {
       sub: user.id,
-      phoneNumber: user.phoneNumber || undefined,
+      phoneNumber: user.phoneNumber,
     };
 
     const accessTokenExpiresIn =
@@ -267,10 +531,10 @@ export class AuthService {
 
     // 만료 시간 계산 (밀리초로 변환)
     const accessExpiresAt = new Date(
-      Date.now() + this.parseTimeToMs(accessTokenExpiresIn),
+      Date.now() + parseTimeToMs(accessTokenExpiresIn),
     );
     const refreshExpiresAt = new Date(
-      Date.now() + this.parseTimeToMs(refreshTokenExpiresIn),
+      Date.now() + parseTimeToMs(refreshTokenExpiresIn),
     );
 
     // AuthToken 테이블에 저장
@@ -286,27 +550,6 @@ export class AuthService {
     return { accessToken, refreshToken };
   }
 
-  // 시간 문자열을 밀리초로 변환 (1h -> 3600000, 7d -> 604800000)
-  private parseTimeToMs(timeStr: string): number {
-    const match = timeStr.match(/^(\d+)([smhdw])$/);
-    if (!match) {
-      throw new Error(`Invalid time format: ${timeStr}`);
-    }
-
-    const value = parseInt(match[1], 10);
-    const unit = match[2];
-
-    const multipliers = {
-      s: 1000, // 초
-      m: 60 * 1000, // 분
-      h: 60 * 60 * 1000, // 시간
-      d: 24 * 60 * 60 * 1000, // 일
-      w: 7 * 24 * 60 * 60 * 1000, // 주
-    };
-
-    return value * multipliers[unit as keyof typeof multipliers];
-  }
-
   async getUserFromToken(token: string) {
     try {
       const payload = this.jwtService.verify<JwtPayload>(token);
@@ -317,16 +560,18 @@ export class AuthService {
       });
 
       if (!authToken) {
-        throw new Error('Token not found or revoked');
+        throw new InvalidTokenException(
+          '토큰이 존재하지 않거나 무효화되었습니다.',
+        );
       }
 
       const user = await this.userRepository.findOne({
         where: { id: payload.sub },
-        relations: ['profile', 'socialAccounts'],
+        relations: ['socialAccounts'],
       });
 
       if (!user) {
-        throw new Error('User not found');
+        throw new UserNotFoundException(payload.sub);
       }
 
       return {
@@ -336,7 +581,7 @@ export class AuthService {
         onboardingCompleted: !!user.onboardingCompletedAt,
       };
     } catch {
-      throw new Error('Invalid token');
+      throw new InvalidTokenException();
     }
   }
 
@@ -349,8 +594,12 @@ export class AuthService {
         where: { refreshToken, isRevoked: false },
       });
 
-      if (!authToken || authToken.refreshExpiresAt < new Date()) {
-        throw new Error('Invalid or expired refresh token');
+      if (!authToken) {
+        throw new RefreshTokenInvalidException();
+      }
+
+      if (authToken.refreshExpiresAt < new Date()) {
+        throw new RefreshTokenExpiredException();
       }
 
       const user = await this.userRepository.findOne({
@@ -358,9 +607,8 @@ export class AuthService {
       });
 
       if (!user) {
-        throw new Error('User not found');
+        throw new UserNotFoundException(payload.sub);
       }
-
       // 새 토큰 생성
       const newTokens = await this.generateTokens(user);
 
@@ -369,8 +617,11 @@ export class AuthService {
       await this.authTokenRepository.save(authToken);
 
       return newTokens;
-    } catch {
-      throw new Error('Invalid refresh token');
+    } catch (error) {
+      this.logger.error('리프레시 토큰 처리 실패', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+      throw new RefreshTokenInvalidException();
     }
   }
 
@@ -396,76 +647,81 @@ export class AuthService {
 
   // 온보딩 완료 및 회원가입
   async completeOnboarding(
+    userId: string,
     request: CompleteOnboardingRequest,
   ): Promise<LoginResult> {
     const {
-      socialAccountId,
       phoneNumber,
       nickname,
       birthYear,
       gender,
       districtId,
-      categoryIds,
+      interestIds,
+      hashtagIds,
+      mbti,
+      profileImageUrl,
     } = request;
 
-    // 소셜 계정 확인
-    const socialAccount = await this.socialAccountRepository.findOne({
-      where: { id: socialAccountId },
+    // 현재 사용자 확인
+    const user = await this.userRepository.findOne({
+      where: { id: userId },
+      relations: ['socialAccounts'],
     });
 
-    if (!socialAccount) {
-      throw new BadRequestException('유효하지 않은 소셜 계정입니다.');
+    if (!user) {
+      throw new UserNotFoundException(userId);
     }
 
-    if (socialAccount.userId) {
-      throw new BadRequestException('이미 회원가입이 완료된 계정입니다.');
+    if (user.onboardingCompletedAt) {
+      throw new OnboardingAlreadyCompletedException();
     }
 
-    // 전화번호 중복 확인
+    // 전화번호 중복 확인 (현재 사용자 제외하고, 온보딩 완료된 사용자만 체크)
     const existingUser = await this.userRepository.findOne({
       where: { phoneNumber },
     });
 
-    if (existingUser) {
-      throw new BadRequestException('이미 사용 중인 전화번호입니다.');
+    if (
+      existingUser &&
+      existingUser.id !== userId &&
+      existingUser.onboardingCompletedAt
+    ) {
+      throw new PhoneNumberAlreadyExistsException();
     }
 
-    // User 생성
-    const user = this.userRepository.create({
-      phoneNumber,
-      status: UserStatus.ACTIVE,
-      lastLoginAt: new Date(),
-      onboardingCompletedAt: new Date(),
-      phoneVerifiedAt: new Date(), // 온보딩 완료 시 전화번호도 인증된 것으로 간주
-    });
+    // User 업데이트 (전화번호 설정 및 온보딩 완료)
+    user.phoneNumber = phoneNumber;
+    user.onboardingCompletedAt = new Date();
+    user.phoneVerifiedAt = new Date(); // 온보딩 완료 시 전화번호도 인증된 것으로 간주
     await this.userRepository.save(user);
 
-    // SocialAccount와 User 연결
-    socialAccount.userId = user.id;
-    await this.socialAccountRepository.save(socialAccount);
-
-    // UserProfile 생성
-    const profile = this.userProfileRepository.create({
-      userId: user.id,
-      nickname,
-      profileImageUrl: socialAccount.profileImageUrl || '',
-      categoryIds: categoryIds.map((id) => parseInt(id, 10)),
-      birthYear,
-      gender: gender as Gender,
-      districtId,
-      points: 0,
-      level: 1,
+    // UserProfile 업데이트
+    const profile = await this.userProfileRepository.findOne({
+      where: { userId },
     });
-    await this.userProfileRepository.save(profile);
 
-    // UserRewards 생성
-    const rewards = this.userRewardsRepository.create({
-      userId: user.id,
-      aiMissionTickets: 0,
-    });
-    await this.userRewardsRepository.save(rewards);
+    if (profile) {
+      profile.nickname = nickname;
+      profile.interestIds = interestIds || [];
+      profile.hashtagIds = hashtagIds || [];
+      profile.birthYear = birthYear;
+      profile.gender = gender as Gender;
+      profile.districtId = districtId;
 
-    // 토큰 생성
+      // MBTI 저장
+      if (mbti) {
+        profile.mbti = mbti;
+      }
+
+      // 업로드된 프로필 이미지가 있으면 업데이트
+      if (profileImageUrl) {
+        profile.profileImageUrl = profileImageUrl;
+      }
+
+      await this.userProfileRepository.save(profile);
+    }
+
+    // 새로운 토큰 생성
     const tokens = await this.generateTokens(user);
 
     return {
@@ -476,13 +732,14 @@ export class AuthService {
         phoneNumber: user.phoneNumber,
         status: user.status,
         onboardingCompleted: true,
-        socialAccounts: [
-          {
-            provider: socialAccount.provider,
-            email: socialAccount.email,
-            profileImageUrl: socialAccount.profileImageUrl,
-          },
-        ],
+        socialAccounts:
+          user.socialAccounts && Array.isArray(user.socialAccounts)
+            ? user.socialAccounts.map((account: SocialAccount) => ({
+                provider: account.provider,
+                email: account.email,
+                profileImageUrl: account.profileImageUrl,
+              }))
+            : [],
       },
     };
   }

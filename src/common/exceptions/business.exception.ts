@@ -85,3 +85,68 @@ export class DuplicateResourceException extends HttpException {
     );
   }
 }
+
+// 인증 관련 도메인별 예외들
+
+export class RefreshTokenInvalidException extends BusinessException {
+  constructor(message = '유효하지 않은 리프레시 토큰입니다.') {
+    super(
+      message,
+      ErrorCode.AUTH_REFRESH_TOKEN_INVALID as ErrorCode,
+      HttpStatus.UNAUTHORIZED,
+    );
+  }
+}
+
+export class RefreshTokenExpiredException extends BusinessException {
+  constructor(message = '리프레시 토큰이 만료되었습니다.') {
+    super(
+      message,
+      ErrorCode.AUTH_REFRESH_TOKEN_EXPIRED as ErrorCode,
+      HttpStatus.UNAUTHORIZED,
+    );
+  }
+}
+
+export class VerificationFailedException extends BusinessException {
+  constructor(message = '인증에 실패했습니다.') {
+    super(
+      message,
+      ErrorCode.AUTH_PHONE_VERIFICATION_FAILED,
+      HttpStatus.BAD_REQUEST,
+    );
+  }
+}
+
+export class AccountMergeFailedException extends BusinessException {
+  constructor(message = '계정 통합에 실패했습니다.') {
+    super(
+      message,
+      ErrorCode.AUTH_ACCOUNT_MERGE_FAILED as ErrorCode,
+      HttpStatus.BAD_REQUEST,
+    );
+  }
+}
+
+// 사용자 관련 도메인별 예외들
+export class UserNotFoundException extends ResourceNotFoundException {
+  constructor(id?: string) {
+    super('사용자', id, ErrorCode.USER_NOT_FOUND);
+  }
+}
+
+export class OnboardingAlreadyCompletedException extends BusinessException {
+  constructor(message = '이미 온보딩이 완료된 사용자입니다.') {
+    super(
+      message,
+      ErrorCode.USER_ONBOARDING_ALREADY_COMPLETED,
+      HttpStatus.BAD_REQUEST,
+    );
+  }
+}
+
+export class PhoneNumberAlreadyExistsException extends DuplicateResourceException {
+  constructor() {
+    super('전화번호', 'phoneNumber', ErrorCode.USER_PHONE_ALREADY_EXISTS);
+  }
+}

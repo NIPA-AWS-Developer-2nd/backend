@@ -14,7 +14,7 @@ export interface SocialAccountInfo {
 
 export interface LoginUser {
   id: string;
-  phoneNumber?: string;
+  phoneNumber?: string | null;
   status: string;
   onboardingCompleted: boolean;
   socialAccounts?: SocialAccountInfo[];
@@ -24,11 +24,12 @@ export interface LoginResult {
   accessToken: string;
   refreshToken: string;
   user: LoginUser;
+  merged?: boolean; // 계정 통합 여부
 }
 
 export interface JwtPayload {
   sub: string;
-  phoneNumber?: string;
+  phoneNumber?: string | null;
   iat?: number;
   exp?: number;
 }
@@ -43,23 +44,15 @@ export interface PhoneVerificationConfirmRequest {
 }
 
 export interface CompleteOnboardingRequest {
-  socialAccountId: string;
   phoneNumber: string;
   nickname: string;
   birthYear: number;
   gender: string;
   districtId: string;
-  categoryIds: string[];
+  interestIds?: number[];
+  hashtagIds?: number[];
+  mbti?: string;
+  profileImageUrl?: string;
 }
 
-export interface OnboardingNeeded {
-  socialAccountId: string;
-  needsOnboarding: true;
-  socialAccount: {
-    provider: string;
-    email?: string;
-    profileImageUrl?: string;
-  };
-}
-
-export type SocialLoginResult = LoginResult | OnboardingNeeded;
+export type SocialLoginResult = LoginResult;
