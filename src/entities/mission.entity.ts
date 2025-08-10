@@ -49,8 +49,8 @@ export class Mission {
   @Column({ type: 'varchar', length: 512, array: true, default: '{}' })
   sampleImageUrls: string[];
 
-  @Column({ type: 'varchar', length: 26 })
-  missionCategoryId: string;
+  @Column({ type: 'integer' })
+  missionCategoryId: number;
 
   @Column({
     type: 'enum',
