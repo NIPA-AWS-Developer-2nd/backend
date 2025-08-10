@@ -8,11 +8,16 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { getDatabaseConfig } from './config/database.config';
 import { UserModule } from './modules/user/user.module';
+import { CategoryModule } from './modules/category/category.module';
+import { DistrictModule } from './modules/district/district.module';
+import { LevelModule } from './modules/level/level.module';
+import { UserInterestsModule } from './modules/user-interests/user-interests.module';
+import { UserHashtagsModule } from './modules/user-hashtags/user-hashtags.module';
 import { HealthModule } from './health/health.module';
 import { AuthModule } from './auth/auth.module';
+import { AwsModule } from './aws/aws.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
-
 
 @Module({
   imports: [
@@ -83,6 +88,11 @@ import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
       inject: [ConfigService],
     }),
     UserModule,
+    CategoryModule,
+    DistrictModule,
+    LevelModule,
+    UserInterestsModule,
+    UserHashtagsModule,
     HealthModule,
     AuthModule,
     AwsModule,

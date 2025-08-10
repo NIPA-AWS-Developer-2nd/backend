@@ -21,7 +21,12 @@ export class OnboardingProfileDto {
 
   @IsArray()
   @IsInt({ each: true })
-  categoryIds: number[];
+  categoryIds: number[]; // 프론트엔드 호환성을 위해 categoryIds로 받고 내부적으로 interestIds로 처리
+
+  @IsArray()
+  @IsInt({ each: true })
+  @IsOptional()
+  hashtagIds?: number[];
 
   @IsString()
   @IsOptional()

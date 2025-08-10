@@ -6,6 +6,7 @@ import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston';
 import * as cookieParser from 'cookie-parser';
 import { readFileSync } from 'fs';
 import { join } from 'path';
+import * as express from 'express';
 import { AppModule } from './app.module';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 
@@ -52,6 +53,11 @@ async function bootstrap() {
   // 쿠키 파서 미들웨어
   app.use(cookieParser());
 
+  // 정적 파일 서빙 (개발 환경에서만)
+  if (configService.get<string>('NODE_ENV') !== 'production') {
+    app.use('/api/docs', express.static(join(__dirname, '..', 'public')));
+  }
+
   // Validation Pipe 설정
   app.useGlobalPipes(
     new ValidationPipe({
@@ -86,7 +92,10 @@ async function bootstrap() {
         defaultModelsExpandDepth: -1,
         displayRequestDuration: true,
         deepLinking: true,
+        tagsSorter: 'alpha', // 태그 이름순 정렬
+        operationsSorter: 'alpha', // 엔드포인트 이름순 정렬
       },
+      customJs: '/api/docs/swagger-custom.js',
     });
   }
 

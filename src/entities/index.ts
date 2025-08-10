@@ -6,3 +6,5 @@ export { UserRewards } from './user-rewards.entity';
 export { District } from './district.entity';
 export { Category } from './category.entity';
 export { Level } from './level.entity';
+export { UserInterests } from './user-interests.entity';
+export { UserHashtags } from './user-hashtags.entity';
