@@ -16,7 +16,7 @@ jobs:
       - name: Build and Push to ECR
         uses: mr-smithers-excellent/docker-build-push@v6
         with:
-          image: backend
+          image: halsaram/backend
           tags: ${{ steps.commit.outputs.short }}, latest
           registry: ${{ secrets.AWS_ECR_REGISTRY }}
           dockerfile: Dockerfile
