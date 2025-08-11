@@ -12,7 +12,7 @@ import {
 import { ulid } from 'ulid';
 import { Mission } from './mission.entity';
 import { User } from './user.entity';
-import { MissionParticipant } from './mission-participant.entity';
+import { MissionParticipant } from './meeting-participant.entity';
 import { MeetingProfile } from './meeting-profile.entity';
 
 export enum MeetingStatus {
