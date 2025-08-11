@@ -24,9 +24,7 @@ import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: process.env.NODE_ENV
-        ? [`.env.${process.env.NODE_ENV}`, '.env']
-        : ['.env'],
+      envFilePath: `.env.${process.env.NODE_ENV}`,
       cache: true,
     }),
     TypeOrmModule.forRootAsync({
