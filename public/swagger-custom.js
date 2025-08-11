@@ -18,7 +18,7 @@
       // dev-token API 호출인지 확인
       if (
         url &&
-        url.includes('/api/auth/dev-token') &&
+        url.includes('/auth/dev-token') &&
         options &&
         options.method === 'POST'
       ) {
