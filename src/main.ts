@@ -48,7 +48,7 @@ async function bootstrap() {
   );
 
   // 글로벌 API 접두사 설정
-  app.setGlobalPrefix('api');
+  // app.setGlobalPrefix('api');
 
   // 쿠키 파서 미들웨어
   app.use(cookieParser());
@@ -85,7 +85,7 @@ async function bootstrap() {
       .build();
 
     const document = SwaggerModule.createDocument(app, config);
-    SwaggerModule.setup('api/docs', app, document, {
+    SwaggerModule.setup('/docs', app, document, {
       swaggerOptions: {
         filter: true,
         persistAuthorization: true,
@@ -95,7 +95,7 @@ async function bootstrap() {
         tagsSorter: 'alpha', // 태그 이름순 정렬
         operationsSorter: 'alpha', // 엔드포인트 이름순 정렬
       },
-      customJs: '/api/docs/swagger-custom.js',
+      customJs: '/docs/swagger-custom.js',
     });
   }
 
