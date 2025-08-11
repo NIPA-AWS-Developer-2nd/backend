@@ -1,9 +1,9 @@
-name: Deploy Only to Amazon ECS
+name: Build and Deploy Only to Amazon ECS
 
 on:
   push:
     branches:
-      - actions/ecs
+      - dev
 env:
   AWS_REGION: ap-northeast-2
   AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID}}
