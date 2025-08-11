@@ -1,0 +1,25 @@
+name: ECR Build and Push
+
+on:
+  push:
+    branches:
+      - actions/ecs
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - id: commit
+        uses: pr-mpt/actions-commit-hash@v3
+      - name: Build and Push to ECR
+        uses: mr-smithers-excellent/docker-build-push@v6
+        with:
+          image: backend
+          tags: ${{ steps.commit.outputs.short }}, latest
+          registry: ${{ secrets.AWS_ECR_REGISTRY }}
+          dockerfile: Dockerfile
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
