@@ -1,10 +1,11 @@
 name: Deploy Only to Amazon ECS
 
 on:
-  push:
-    branches:
-      - actions/ecs
-
+  workflow_run:
+    workflows: ['ECR Build and Push']
+    branches: [actions/ecs]
+    types:
+      - completed
 env:
   AWS_REGION: ap-northeast-2
   AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID}}
