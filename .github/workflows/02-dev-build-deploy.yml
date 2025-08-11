@@ -43,6 +43,7 @@ jobs:
           envkey_JWT_SECRET: ${{ secrets.JWT_SECRET}}
           envkey_AWS_REGION: ${{ secrets.AWS_REGION}}
           envkey_AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID}}
+          envkey_AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY}}
           envkey_AWS_S3_BUCKET_NAME: ${{ secrets.AWS_S3_BUCKET_NAME}}
           envkey_AWS_CLOUDFRONT_DOMAIN: ${{ secrets.AWS_CLOUDFRONT_DOMAIN}}
           file_name: .env.development
