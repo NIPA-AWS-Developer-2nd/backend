@@ -15,6 +15,8 @@ FROM node:24-alpine
 WORKDIR /app
 
 COPY package*.json ./
+ENV NODE_ENV=development
+COPY .env.development .
 
 RUN npm install --omit=dev --ignore-scripts
 
