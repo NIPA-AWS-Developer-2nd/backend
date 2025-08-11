@@ -2,7 +2,7 @@ name: Deploy Only to Amazon ECS
 
 on:
   workflow_run:
-    workflows: ['ECR Build and Push']
+    workflows: [ECR Build and Push]
     branches: [actions/ecs]
     types:
       - completed
