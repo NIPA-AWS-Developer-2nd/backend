@@ -6,9 +6,12 @@ import {
   UpdateDateColumn,
   Index,
   OneToMany,
+  OneToOne,
 } from 'typeorm';
 import { ulid } from 'ulid';
 import { SocialAccount } from './social-account.entity';
+import { UserProfile } from './user-profile.entity';
+import { UserRewards } from './user-rewards.entity';
 
 export enum UserStatus {
   ACTIVE = 'active',
@@ -53,6 +56,12 @@ export class User {
   // Relations
   @OneToMany(() => SocialAccount, (socialAccount) => socialAccount.user)
   socialAccounts?: SocialAccount[];
+
+  @OneToOne(() => UserProfile, (profile) => profile.user)
+  profile?: UserProfile;
+
+  @OneToOne(() => UserRewards, (rewards) => rewards.user)
+  rewards?: UserRewards;
 
   constructor() {
     if (!this.id) {
