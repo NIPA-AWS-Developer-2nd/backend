@@ -9,3 +9,15 @@ export { Level } from './level.entity';
 export { UserInterests } from './user-interests.entity';
 export { UserHashtags } from './user-hashtags.entity';
 export { Mission, MissionDifficulty } from './mission.entity';
+export { Meeting, MeetingStatus } from './meeting.entity';
+export { MeetingProfile } from './meeting-profile.entity';
+export {
+  MeetingProfileTrait,
+  TraitPreference,
+} from './meeting-profile-trait.entity';
+export {
+  MeetingParticipant,
+  ParticipantStatus,
+} from './meeting-participant.entity';
+export { UserMission } from './user-mission.entity';
+export { MissionReview, VerificationStatus } from './mission-review.entity';

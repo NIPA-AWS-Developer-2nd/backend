@@ -47,9 +47,6 @@ async function bootstrap() {
     new AllExceptionsFilter(app.get(WINSTON_MODULE_NEST_PROVIDER)),
   );
 
-  // 글로벌 API 접두사 설정
-  // app.setGlobalPrefix('api');
-
   // 쿠키 파서 미들웨어
   app.use(cookieParser());
 
@@ -103,9 +100,9 @@ async function bootstrap() {
   await app.listen(port);
 
   const logger = app.get<Logger>(WINSTON_MODULE_NEST_PROVIDER);
-  logger.log(`🚀 Application running on: http://localhost:${port}`);
+  logger.log(`🚀 Application is running on port ${port}`);
   if (configService.get<string>('NODE_ENV') !== 'production') {
-    logger.log(`📚 Swagger documentation: http://localhost:${port}/api/docs`);
+    logger.log(`📚 Swagger documentation: /docs`);
   }
 }
 

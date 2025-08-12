@@ -1,6 +1,7 @@
 import { DataSource } from 'typeorm';
 import * as winston from 'winston';
 import { ulid } from 'ulid';
+import * as starvingOrange from 'starving-orange';
 import {
   District,
   Category,
@@ -11,10 +12,14 @@ import {
   UserProfile,
   UserRewards,
   Mission,
+  Meeting,
+  MeetingParticipant,
 } from '../../entities';
 import { UserStatus } from '../../entities/user.entity';
 import { Gender } from '../../entities/user-profile.entity';
 import { MissionDifficulty } from '../../entities/mission.entity';
+import { MeetingStatus } from '../../entities/meeting.entity';
+import { ParticipantStatus } from '../../entities/meeting-participant.entity';
 
 export const seedInitialData = async (dataSource: DataSource) => {
   const logger = winston.createLogger({
@@ -37,6 +42,8 @@ export const seedInitialData = async (dataSource: DataSource) => {
   const userProfileRepository = dataSource.getRepository(UserProfile);
   const userRewardsRepository = dataSource.getRepository(UserRewards);
   const missionRepository = dataSource.getRepository(Mission);
+  const meetingRepository = dataSource.getRepository(Meeting);
+  const participantRepository = dataSource.getRepository(MeetingParticipant);
 
   // 서울 구 데이터 시딩
   const seoulDistricts = [
@@ -337,7 +344,8 @@ export const seedInitialData = async (dataSource: DataSource) => {
     {
       id: '01JG9H7E2FQMC8GN1VKXR6W3T9',
       title: '송파구 맛집 방문하기',
-      description: '송파구 내 인기 맛집을 방문하고 인증 사진을 업로드하세요.',
+      description:
+        '송파구 내 인기 맛집을 방문하고 인증 사진을 업로드해 주세요.',
       basePoints: 500,
       estimatedDuration: 120,
       minParticipants: 4,
@@ -687,6 +695,238 @@ export const seedInitialData = async (dataSource: DataSource) => {
         aiMissionTickets: 3,
       });
       await userRewardsRepository.save(testRewards);
+    }
+  }
+
+  // 20명의 더미 사용자 생성
+  logger.info('👥 20명의 더미 사용자 생성 시작...');
+
+  const activeSongpaDistrict = await districtRepository.findOne({
+    where: { districtName: '송파구', isActive: true },
+  });
+
+  const allInterests = await userInterestsRepository.find();
+  const allHashtags = await userHashtagsRepository.find();
+
+  if (
+    activeSongpaDistrict &&
+    allInterests.length > 0 &&
+    allHashtags.length > 0
+  ) {
+    // 010######## 형식의 랜덤 번호 20개 생성
+    const phoneNumbers: string[] = [];
+    const phoneSet = new Set<string>();
+    while (phoneNumbers.length < 20) {
+      const randomNumber = Math.floor(Math.random() * 1_0000_0000)
+        .toString()
+        .padStart(8, '0');
+      const phone = `010${randomNumber}`;
+      if (!phoneSet.has(phone)) {
+        phoneNumbers.push(phone);
+        phoneSet.add(phone);
+      }
+    }
+
+    const genders = [Gender.MALE, Gender.FEMALE, Gender.OTHER, null];
+
+    // Type-safe random gender selection helper
+    const getRandomGender = (): Gender | null => {
+      const randomIndex = Math.floor(Math.random() * genders.length);
+      return genders[randomIndex] ?? null;
+    };
+
+    const mbtiTypes = [
+      'INFP',
+      'ENFP',
+      'INFJ',
+      'ENFJ',
+      'INTJ',
+      'ENTJ',
+      'INTP',
+      'ENTP',
+      'ISFP',
+      'ESFP',
+      'ISTP',
+      'ESTP',
+      'ISFJ',
+      'ESFJ',
+      'ISTJ',
+      'ESTJ',
+    ];
+
+    for (let i = 0; i < 20; i++) {
+      const phoneNumber = phoneNumbers[i];
+
+      // 이미 존재하는 사용자인지 확인
+      const existingUser = await userRepository.findOne({
+        where: { phoneNumber },
+      });
+
+      if (existingUser) {
+        continue; // 이미 존재하면 건너뜀
+      }
+
+      const userId = ulid();
+      const nicknameResult = starvingOrange.generateNickname();
+      const nickname = nicknameResult.nickname;
+
+      // 랜덤한 관심사 2-4개 선택
+      const interestCount = Math.floor(Math.random() * 3) + 2;
+      const randomInterests = allInterests
+        .sort(() => 0.5 - Math.random())
+        .slice(0, interestCount)
+        .map((interest) => interest.id);
+
+      // 랜덤한 해시태그 1-3개 선택
+      const hashtagCount = Math.floor(Math.random() * 3) + 1;
+      const randomHashtags = allHashtags
+        .sort(() => 0.5 - Math.random())
+        .slice(0, hashtagCount)
+        .map((hashtag) => hashtag.id);
+
+      // 사용자 생성
+      const user = userRepository.create({
+        id: userId,
+        phoneNumber,
+        phoneVerifiedAt: new Date(),
+        onboardingCompletedAt: new Date(),
+        lastLoginAt: new Date(
+          Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000,
+        ), // 지난 30일 내 랜덤
+        status: UserStatus.ACTIVE,
+      });
+      await userRepository.save(user);
+
+      // 사용자 프로필 생성
+      const profile = userProfileRepository.create({
+        userId,
+        nickname,
+        profileImageUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${nickname}`,
+        bio: `안녕하세요! ${nickname}입니다. 새로운 사람들과 함께 재미있는 활동을 해보고 싶어요!`,
+        birthYear: Math.floor(Math.random() * 25) + 1990, // 1990-2014
+        gender: getRandomGender(),
+        mbti: mbtiTypes[Math.floor(Math.random() * mbtiTypes.length)],
+        interestIds: randomInterests,
+        hashtagIds: randomHashtags,
+        districtId: activeSongpaDistrict.id,
+        points: Math.floor(Math.random() * 2000), // 0-1999 포인트
+      });
+      await userProfileRepository.save(profile);
+
+      // 사용자 보상 생성
+      const rewards = userRewardsRepository.create({
+        userId,
+        aiMissionTickets: Math.floor(Math.random() * 5), // 0-4 티켓
+      });
+      await userRewardsRepository.save(rewards);
+    }
+  }
+
+  // 이번 주 모임 더미데이터 생성
+  const allMissions = await missionRepository.find({
+    where: { isActive: true },
+  });
+  const allUsers = await userRepository.find({
+    relations: ['profile'],
+    where: { status: UserStatus.ACTIVE },
+  });
+
+  if (allMissions.length > 0 && allUsers.length > 0) {
+    const now = new Date();
+    const weekStart = new Date(now);
+    weekStart.setDate(now.getDate() - now.getDay() + 1); // 이번 주 월요일
+    weekStart.setHours(0, 0, 0, 0);
+
+    // 이번 주 각 날짜별로 1-3개의 모임 생성
+    for (let day = 0; day < 7; day++) {
+      const meetingDate = new Date(weekStart);
+      meetingDate.setDate(weekStart.getDate() + day);
+
+      // 과거 날짜는 건너뛰기
+      if (meetingDate < now) {
+        continue;
+      }
+
+      const meetingsToday = Math.floor(Math.random() * 3) + 1; // 1-3개
+
+      for (let i = 0; i < meetingsToday; i++) {
+        const mission =
+          allMissions[Math.floor(Math.random() * allMissions.length)];
+        const host = allUsers[Math.floor(Math.random() * allUsers.length)];
+
+        // 모임 시작 시간 (10:00 ~ 20:00, 30분 단위)
+        const startHour = Math.floor(Math.random() * 11) + 10; // 10-20시
+        const startMinute = Math.random() < 0.5 ? 0 : 30; // 0분 또는 30분
+        const scheduledAt = new Date(meetingDate);
+        scheduledAt.setHours(startHour, startMinute, 0, 0);
+
+        // 모집 마감시간 (모임 시작 2-24시간 전)
+        const recruitHoursBefore = Math.floor(Math.random() * 23) + 2; // 2-24시간 전
+        const recruitUntil = new Date(scheduledAt);
+        recruitUntil.setHours(scheduledAt.getHours() - recruitHoursBefore);
+
+        // 모임이 이미 모집 마감되었는지 확인
+        const isRecruitmentClosed = recruitUntil < now;
+
+        const meetingId = ulid();
+
+        const meeting = meetingRepository.create({
+          id: meetingId,
+          missionId: mission.id,
+          hostUserId: host.id,
+          status: isRecruitmentClosed
+            ? MeetingStatus.ACTIVE
+            : MeetingStatus.RECRUITING,
+          recruitUntil,
+          scheduledAt,
+          qrCodeToken: isRecruitmentClosed
+            ? `qr_${ulid().substring(0, 10)}`
+            : null,
+          qrGeneratedAt: isRecruitmentClosed ? new Date() : null,
+        });
+
+        await meetingRepository.save(meeting);
+
+        // 호스트를 참가자로 추가
+        const hostParticipant = participantRepository.create({
+          meetingId,
+          userId: host.id,
+          isHost: true,
+          status: ParticipantStatus.JOINED,
+          joinedAt: new Date(
+            meeting.createdAt.getTime() + Math.random() * 60000,
+          ), // 생성 후 1분 이내
+        });
+        await participantRepository.save(hostParticipant);
+
+        // 추가 참가자들 (1-3명)
+        const additionalParticipants = Math.floor(Math.random() * 3) + 1;
+        const usedUsers = new Set([host.id]);
+
+        for (
+          let j = 0;
+          j < additionalParticipants && usedUsers.size < allUsers.length;
+          j++
+        ) {
+          let randomUser: (typeof allUsers)[0];
+          do {
+            randomUser = allUsers[Math.floor(Math.random() * allUsers.length)];
+          } while (usedUsers.has(randomUser.id));
+
+          usedUsers.add(randomUser.id);
+
+          const participant = participantRepository.create({
+            meetingId,
+            userId: randomUser.id,
+            isHost: false,
+            status: ParticipantStatus.JOINED,
+            joinedAt: new Date(
+              meeting.createdAt.getTime() + Math.random() * 24 * 60 * 60 * 1000,
+            ), // 24시간 이내
+          });
+          await participantRepository.save(participant);
+        }
+      }
     }
   }
 

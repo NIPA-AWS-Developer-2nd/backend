@@ -1,6 +1,14 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsEnum, IsNumber, IsOptional, IsString, Min, Max, IsDateString, IsArray } from 'class-validator';
-import { Transform, Type } from 'class-transformer';
+import {
+  IsEnum,
+  IsNumber,
+  IsOptional,
+  IsString,
+  Min,
+  Max,
+  IsDateString,
+} from 'class-validator';
+import { Type } from 'class-transformer';
 
 // 미션 검색 DTO
 export class SearchMissionsDto {
@@ -156,7 +164,10 @@ export class SearchMeetingsDto {
   @IsString()
   category?: string;
 
-  @ApiPropertyOptional({ enum: ['EASY', 'MEDIUM', 'HARD'], description: '난이도 (보조 필터)' })
+  @ApiPropertyOptional({
+    enum: ['EASY', 'MEDIUM', 'HARD'],
+    description: '난이도 (보조 필터)',
+  })
   @IsOptional()
   @IsEnum(['EASY', 'MEDIUM', 'HARD'])
   difficulty?: 'EASY' | 'MEDIUM' | 'HARD';
@@ -191,7 +202,9 @@ export class SearchMeetingsDto {
   @Max(100)
   size?: number = 20;
 
-  @ApiPropertyOptional({ enum: ['scheduledAt', 'distance', 'seats', 'deadline'] })
+  @ApiPropertyOptional({
+    enum: ['scheduledAt', 'distance', 'seats', 'deadline'],
+  })
   @IsOptional()
   @IsEnum(['scheduledAt', 'distance', 'seats', 'deadline'])
   sort?: 'scheduledAt' | 'distance' | 'seats' | 'deadline' = 'scheduledAt';

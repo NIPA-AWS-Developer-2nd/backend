@@ -14,6 +14,7 @@ import { District } from './district.entity';
 export enum Gender {
   MALE = 'male',
   FEMALE = 'female',
+  OTHER = 'other',
 }
 
 @Entity('user_profiles')
@@ -45,7 +46,7 @@ export class UserProfile {
   @Column({ type: 'varchar', length: 200, nullable: true })
   bio: string | null;
 
-  @Column({ type: 'int', nullable: true })
+  @Column({ type: 'smallint', nullable: true })
   birthYear: number | null;
 
   @Column({

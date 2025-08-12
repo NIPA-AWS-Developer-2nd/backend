@@ -14,6 +14,7 @@ import { LevelModule } from './modules/level/level.module';
 import { UserInterestsModule } from './modules/user-interests/user-interests.module';
 import { UserHashtagsModule } from './modules/user-hashtags/user-hashtags.module';
 import { MissionModule } from './modules/mission/mission.module';
+import { MeetingModule } from './modules/meeting/meeting.module';
 import { HealthModule } from './health/health.module';
 import { AuthModule } from './auth/auth.module';
 import { AwsModule } from './aws/aws.module';
@@ -93,6 +94,7 @@ import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
     UserInterestsModule,
     UserHashtagsModule,
     MissionModule,
+    MeetingModule,
     HealthModule,
     AuthModule,
     AwsModule,
