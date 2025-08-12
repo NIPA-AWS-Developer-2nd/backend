@@ -10,6 +10,9 @@ import {
 import { User } from './user.entity';
 
 @Entity('auth_tokens')
+@Index('IDX_auth_tokens_user_id_active', ['userId'], {
+  where: 'is_revoked = false',
+})
 export class AuthToken {
   @PrimaryGeneratedColumn()
   id: number;
@@ -21,8 +24,7 @@ export class AuthToken {
   @Index()
   accessToken: string;
 
-  @Column({ type: 'varchar', length: 500, unique: true })
-  @Index()
+  @Column({ type: 'varchar', length: 500 })
   refreshToken: string;
 
   @Column({ type: 'timestamptz' })
@@ -34,7 +36,7 @@ export class AuthToken {
   @Column({ type: 'varchar', length: 255, nullable: true })
   deviceInfo: string;
 
-  @Column({ type: 'boolean', default: false })
+  @Column({ type: 'boolean', default: false, name: 'is_revoked' })
   isRevoked: boolean;
 
   @CreateDateColumn()
