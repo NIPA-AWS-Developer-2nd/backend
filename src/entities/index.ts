@@ -16,6 +16,8 @@ export {
   TraitPreference,
 } from './meeting-profile-trait.entity';
 export {
-  MissionParticipant,
+  MeetingParticipant,
   ParticipantStatus,
 } from './meeting-participant.entity';
+export { UserMission } from './user-mission.entity';
+export { MissionReview, VerificationStatus } from './mission-review.entity';
