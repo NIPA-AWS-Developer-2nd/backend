@@ -15,15 +15,15 @@ export enum ParticipantStatus {
   DROPPED = 'dropped',
 }
 
-@Entity('mission_participants')
-export class MissionParticipant {
+@Entity('meeting_participants')
+export class MeetingParticipant {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ type: 'varchar', length: 26 })
+  @Column({ type: 'varchar' })
   meetingId: string;
 
-  @Column({ type: 'varchar', length: 26 })
+  @Column({ type: 'varchar' })
   userId: string;
 
   @Column({ type: 'boolean', default: false })

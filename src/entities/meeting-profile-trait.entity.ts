@@ -18,10 +18,10 @@ export class MeetingProfileTrait {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ type: 'varchar', length: 26 })
+  @Column({ type: 'varchar' })
   meetingId: string;
 
-  @Column({ type: 'varchar', length: 26 })
+  @Column({ type: 'varchar' })
   hashtagId: string;
 
   @Column({

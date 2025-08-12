@@ -16,7 +16,7 @@ export class MeetingProfile {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ type: 'varchar', length: 26, unique: true })
+  @Column({ type: 'varchar', unique: true })
   meetingId: string;
 
   @Column({ type: 'varchar', length: 100, default: '' })
