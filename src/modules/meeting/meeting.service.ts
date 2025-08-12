@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, SelectQueryBuilder } from 'typeorm';
-import { Meeting, MissionParticipant } from '../../entities';
+import { Meeting, MeetingParticipant, ParticipantStatus } from '../../entities';
 import { GetMeetingsQueryDto } from './dto/get-meetings-query.dto';
 import { GetMeetingsResponseDto, MeetingDto } from './dto/meeting-response.dto';
 
@@ -10,8 +10,8 @@ export class MeetingService {
   constructor(
     @InjectRepository(Meeting)
     private readonly meetingRepository: Repository<Meeting>,
-    @InjectRepository(MissionParticipant)
-    private readonly participantRepository: Repository<MissionParticipant>,
+    @InjectRepository(MeetingParticipant)
+    private readonly participantRepository: Repository<MeetingParticipant>,
   ) {}
 
   async getMeetings(
@@ -37,7 +37,7 @@ export class MeetingService {
         const participantCount = await this.participantRepository.count({
           where: {
             meetingId: meeting.id,
-            status: 'joined',
+            status: ParticipantStatus.JOINED,
           },
         });
 
@@ -67,7 +67,8 @@ export class MeetingService {
       .leftJoinAndSelect('mission.category', 'category')
       .leftJoinAndSelect('mission.district', 'district')
       .leftJoinAndSelect('meeting.host', 'host')
-      .leftJoinAndSelect('host.profile', 'hostProfile');
+      .leftJoinAndSelect('host.profile', 'hostProfile')
+      .leftJoinAndSelect('host.rewards', 'hostRewards');
 
     // 상태 필터
     if (query.status) {
@@ -127,26 +128,50 @@ export class MeetingService {
   ): void {
     // 특정 날짜 선택이 우선순위
     if (query.selectedDate) {
-      const selectedDate = new Date(query.selectedDate);
-      const startOfDay = new Date(selectedDate);
-      startOfDay.setHours(0, 0, 0, 0);
-      const endOfDay = new Date(selectedDate);
-      endOfDay.setHours(23, 59, 59, 999);
+      // YYYY-MM-DD 형식 날짜를 파싱 (타임존 무시)
+      const dateParts = query.selectedDate.split('-');
+      if (dateParts.length === 3) {
+        const year = parseInt(dateParts[0], 10);
+        const month = parseInt(dateParts[1], 10) - 1; // month는 0-based
+        const day = parseInt(dateParts[2], 10);
 
-      queryBuilder.andWhere(
-        'meeting.scheduledAt >= :startOfDay AND meeting.scheduledAt <= :endOfDay',
-        { startOfDay, endOfDay },
-      );
+        // 로컬 시간대로 날짜 생성
+        const startOfDay = new Date(year, month, day, 0, 0, 0, 0);
+        const endOfDay = new Date(year, month, day, 23, 59, 59, 999);
+
+        queryBuilder.andWhere(
+          'meeting.scheduledAt >= :startOfDay AND meeting.scheduledAt <= :endOfDay',
+          { startOfDay, endOfDay },
+        );
+      }
     } else if (query.weekStartDate && query.weekEndDate) {
       // 주간 범위 필터
-      queryBuilder.andWhere(
-        'meeting.scheduledAt >= :weekStart AND meeting.scheduledAt <= :weekEnd',
-        {
-          weekStart: new Date(query.weekStartDate),
-          weekEnd: new Date(query.weekEndDate),
-        },
-      );
+      // ISO 문자열에서 날짜만 추출하여 처리
+      const weekStart = this.parseLocalDate(query.weekStartDate);
+      const weekEnd = this.parseLocalDate(query.weekEndDate);
+
+      if (weekStart && weekEnd) {
+        // weekEnd는 해당 날짜의 끝까지 포함
+        weekEnd.setHours(23, 59, 59, 999);
+
+        queryBuilder.andWhere(
+          'meeting.scheduledAt >= :weekStart AND meeting.scheduledAt <= :weekEnd',
+          { weekStart, weekEnd },
+        );
+      }
     }
+  }
+
+  private parseLocalDate(dateString: string): Date | null {
+    // ISO 문자열 또는 YYYY-MM-DD 형식 처리
+    const dateMatch = dateString.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (dateMatch) {
+      const year = parseInt(dateMatch[1], 10);
+      const month = parseInt(dateMatch[2], 10) - 1; // month는 0-based
+      const day = parseInt(dateMatch[3], 10);
+      return new Date(year, month, day, 0, 0, 0, 0);
+    }
+    return null;
   }
 
   private applySorting(
@@ -179,8 +204,8 @@ export class MeetingService {
       status: meeting.status,
       recruitUntil: meeting.recruitUntil.toISOString(),
       scheduledAt: meeting.scheduledAt.toISOString(),
-      qrCodeToken: meeting.qrCodeToken,
-      qrGeneratedAt: meeting.qrGeneratedAt?.toISOString(),
+      qrCodeToken: meeting.qrCodeToken || undefined,
+      qrGeneratedAt: meeting.qrGeneratedAt?.toISOString() || undefined,
       createdAt: meeting.createdAt.toISOString(),
       updatedAt: meeting.updatedAt.toISOString(),
       currentParticipants,
@@ -201,7 +226,7 @@ export class MeetingService {
             thumbnailUrl: meeting.mission.thumbnailUrl,
             precautions: meeting.mission.precautions,
             districtId: meeting.mission.districtId,
-            location: meeting.mission.location,
+            location: meeting.mission.location || undefined,
             hashtags: meeting.mission.hashtags,
             isActive: meeting.mission.isActive,
             createdAt: meeting.mission.createdAt.toISOString(),
@@ -230,8 +255,8 @@ export class MeetingService {
             id: meeting.host.id,
             nickname: meeting.host.profile?.nickname || '알 수 없음',
             profileImageUrl: meeting.host.profile?.profileImageUrl || '',
-            points: meeting.host.rewards?.totalPoints || 0,
-            level: meeting.host.rewards?.currentLevel || 1,
+            points: meeting.host.profile?.points || 0,
+            level: 1, // 임시로 1로 설정, 나중에 레벨 시스템 추가 시 수정
           }
         : undefined,
     };
