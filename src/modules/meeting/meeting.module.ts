@@ -6,7 +6,7 @@ import {
   Meeting,
   MeetingProfile,
   MeetingProfileTrait,
-  MissionParticipant,
+  MeetingParticipant,
 } from '../../entities';
 
 @Module({
@@ -15,7 +15,7 @@ import {
       Meeting,
       MeetingProfile,
       MeetingProfileTrait,
-      MissionParticipant,
+      MeetingParticipant,
     ]),
   ],
   controllers: [MeetingController],
