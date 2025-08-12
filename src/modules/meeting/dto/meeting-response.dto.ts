@@ -66,8 +66,8 @@ export class MeetingMissionDto {
   @ApiProperty({ description: '지역구 ID' })
   districtId: string;
 
-  @ApiPropertyOptional({ description: '장소명' })
-  location?: string;
+  @ApiPropertyOptional({ description: '활동 장소명' })
+  location?: string | null;
 
   @ApiProperty({ type: [String], description: '해시태그 목록' })
   hashtags: string[];
@@ -123,10 +123,10 @@ export class MeetingDto {
   scheduledAt: string;
 
   @ApiPropertyOptional({ description: 'QR 코드 토큰' })
-  qrCodeToken?: string;
+  qrCodeToken?: string | null;
 
   @ApiPropertyOptional({ description: 'QR 코드 생성 일시 (ISO 8601)' })
-  qrGeneratedAt?: string;
+  qrGeneratedAt?: string | null;
 
   @ApiProperty({ description: '생성일시 (ISO 8601)' })
   createdAt: string;

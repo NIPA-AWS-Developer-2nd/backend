@@ -7,7 +7,6 @@ import {
   IsNumber,
   Min,
   Max,
-  IsDateString,
 } from 'class-validator';
 
 export enum MeetingStatus {
@@ -70,27 +69,27 @@ export class GetMeetingsQueryDto {
 
   // 주간/날짜 필터링
   @ApiPropertyOptional({
-    description: '주간 시작 날짜 (ISO 8601)',
-    example: '2024-01-01T00:00:00.000Z',
+    description: '주간 시작 날짜 (ISO 8601 또는 YYYY-MM-DD)',
+    example: '2025-01-01',
   })
   @IsOptional()
-  @IsDateString()
+  @IsString()
   weekStartDate?: string;
 
   @ApiPropertyOptional({
-    description: '주간 종료 날짜 (ISO 8601)',
-    example: '2024-01-07T23:59:59.999Z',
+    description: '주간 종료 날짜 (ISO 8601 또는 YYYY-MM-DD)',
+    example: '2025-01-07',
   })
   @IsOptional()
-  @IsDateString()
+  @IsString()
   weekEndDate?: string;
 
   @ApiPropertyOptional({
-    description: '특정 날짜 선택 (ISO 8601)',
-    example: '2024-01-01T00:00:00.000Z',
+    description: '특정 날짜 선택 (YYYY-MM-DD 형식)',
+    example: '2025-01-01',
   })
   @IsOptional()
-  @IsDateString()
+  @IsString()
   selectedDate?: string;
 
   @ApiPropertyOptional({ description: '특정 미션의 모임만 조회' })
