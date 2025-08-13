@@ -562,14 +562,20 @@ export class AuthController {
         maxAge: 7 * TIME_MULTIPLIERS.d,
       });
 
-      // 온보딩 완료 여부에 따라 리다이렉트
-      if (user.onboardingCompletedAt) {
-        // 온보딩 완료된 사용자는 홈으로
-        res.redirect(`${this.configService.get('FRONTEND_URL')}/auth/success`);
-      } else {
-        // 온보딩 미완료 사용자는 온보딩 페이지로
-        res.redirect(`${this.configService.get('FRONTEND_URL')}/onboarding`);
-      }
+      // JSON 응답으로 리다이렉트 정보 반환
+      const redirectPath = user.onboardingCompletedAt
+        ? '/auth/success'
+        : '/onboarding';
+
+      return res.json({
+        success: true,
+        message: '토큰 발급이 완료되었습니다.',
+        redirectUrl: redirectPath,
+        user: {
+          id: user.id,
+          onboardingCompleted: !!user.onboardingCompletedAt,
+        },
+      });
     } catch (error: unknown) {
       if (
         error instanceof NotFoundException ||
