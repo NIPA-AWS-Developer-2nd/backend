@@ -37,9 +37,10 @@ jobs:
           envkey_DB_NAME: ${{ secrets.DB_NAME}}
           envkey_KAKAO_CLIENT_ID: ${{ secrets.KAKAO_CLIENT_ID }}
           envkey_KAKAO_CLIENT_SECRET: ${{ secrets.KAKAO_CLIENT_SECRET }}
-          envkey_REDIRECT_URI: ${{ secrets.REDIRECT_URI}}
+          envkey_KAKAO_REDIRECT_URI: ${{ secrets.KAKAO_REDIRECT_URI}}
           envkey_NAVER_CLIENT_ID: ${{ secrets.NAVER_CLIENT_ID}}
           envkey_NAVER_CLIENT_SECRET: ${{ secrets.NAVER_CLIENT_SECRET}}
+          envkey_NAVER_REDIRECT_URI: ${{ secrets.envkey_NAVER_REDIRECT_URI}}
           envkey_GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
           envkey_GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
           envkey_GOOGLE_REDIRECT_URI: ${{ secrets.GOOGLE_REDIRECT_URI}}
