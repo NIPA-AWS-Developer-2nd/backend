@@ -594,12 +594,20 @@ export class AuthController {
       res.cookie('access_token', tokens.accessToken, cookieOptions);
       res.cookie('refresh_token', tokens.refreshToken, cookieOptions);
 
-      // 온보딩 완료 여부에 따라 리다이렉트
-      const redirectUrl = user.onboardingCompletedAt
-        ? `${this.configService.get('FRONTEND_URL')}/auth/success`
-        : `${this.configService.get('FRONTEND_URL')}/onboarding`;
+      // JSON 응답으로 리다이렉트 정보 반환
+      const redirectPath = user.onboardingCompletedAt
+        ? '/auth/success'
+        : '/onboarding';
 
-      res.redirect(redirectUrl);
+      return res.json({
+        success: true,
+        message: '토큰 발급이 완료되었습니다.',
+        redirectUrl: redirectPath,
+        user: {
+          id: user.id,
+          onboardingCompleted: !!user.onboardingCompletedAt,
+        },
+      });
     } catch (error: unknown) {
       // 이미 처리된 HTTP 예외는 그대로 던지기
       if (
