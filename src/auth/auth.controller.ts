@@ -23,6 +23,8 @@ import { TIME_MULTIPLIERS } from '../common/constants/time.constants';
 import {
   AuthenticationException,
   InvalidTokenException,
+  DevTokenProductionException,
+  DevTokenGenerationException,
 } from '../common/exceptions';
 import { SocialLoginResult, LoginResult } from './types';
 import {
@@ -34,6 +36,7 @@ import { PhoneVerificationResult } from './service/phone.service';
 import { Public } from './decorators/public.decorator';
 import { CurrentUser } from './decorators/current-user.decorator';
 import { User, UserProfile } from '../entities';
+import { UserStatus } from '../entities/user.entity';
 
 // 개발용 토큰 발급 DTO
 class DevTokenRequestDto {
@@ -520,19 +523,38 @@ export class AuthController {
   ) {
     // 프로덕션 환경에서는 비활성화
     if (process.env.NODE_ENV === 'production') {
-      throw new BadRequestException(
-        '개발용 API는 프로덕션 환경에서 사용할 수 없습니다.',
-      );
+      this.logger.warn('프로덕션 환경에서 개발용 토큰 발급 시도', {
+        nickname: body.nickname,
+        userAgent: res.req.get('User-Agent'),
+        ip: res.req.ip,
+      });
+      throw new DevTokenProductionException();
+    }
+
+    if (!body.nickname || body.nickname.trim() === '') {
+      this.logger.warn('개발용 토큰 발급 - 빈 닉네임', {
+        nickname: body.nickname,
+      });
+      throw new BadRequestException('닉네임은 필수입니다.');
     }
 
     try {
+      this.logger.info('개발용 토큰 발급 시도', {
+        nickname: body.nickname,
+        userAgent: res.req.get('User-Agent'),
+        ip: res.req.ip,
+      });
+
       // 닉네임으로 사용자 찾기
       const userProfile = await this.userProfileRepository.findOne({
-        where: { nickname: body.nickname },
+        where: { nickname: body.nickname.trim() },
         relations: ['user'],
       });
 
       if (!userProfile || !userProfile.user) {
+        this.logger.warn('개발용 토큰 발급 - 사용자 없음', {
+          nickname: body.nickname,
+        });
         throw new NotFoundException(
           `닉네임 '${body.nickname}'인 사용자를 찾을 수 없습니다.`,
         );
@@ -540,49 +562,62 @@ export class AuthController {
 
       const user = userProfile.user;
 
+      // 사용자 계정 상태 확인
+      if (user.status !== UserStatus.ACTIVE) {
+        this.logger.warn('개발용 토큰 발급 - 비활성 계정', {
+          userId: user.id,
+          nickname: body.nickname,
+          status: user.status,
+        });
+        throw new BadRequestException(
+          `해당 사용자의 계정이 활성화되지 않았습니다. (상태: ${user.status})`,
+        );
+      }
+
       // 해당 사용자의 토큰 생성
       const tokens = await this.authService.generateTokens(user);
 
-      this.logger.info('개발용 토큰 발급', {
+      this.logger.info('개발용 토큰 발급 성공', {
         userId: user.id,
         nickname: body.nickname,
+        onboardingCompleted: !!user.onboardingCompletedAt,
       });
 
-      res.cookie('access_token', tokens.accessToken, {
+      // 쿠키 설정
+      const cookieOptions = {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
+        sameSite: 'lax' as const,
         maxAge: 7 * TIME_MULTIPLIERS.d,
-      });
+      };
 
-      res.cookie('refresh_token', tokens.refreshToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        maxAge: 7 * TIME_MULTIPLIERS.d,
-      });
+      res.cookie('access_token', tokens.accessToken, cookieOptions);
+      res.cookie('refresh_token', tokens.refreshToken, cookieOptions);
 
       // 온보딩 완료 여부에 따라 리다이렉트
-      if (user.onboardingCompletedAt) {
-        // 온보딩 완료된 사용자는 홈으로
-        res.redirect(`${this.configService.get('FRONTEND_URL')}/auth/success`);
-      } else {
-        // 온보딩 미완료 사용자는 온보딩 페이지로
-        res.redirect(`${this.configService.get('FRONTEND_URL')}/onboarding`);
-      }
+      const redirectUrl = user.onboardingCompletedAt
+        ? `${this.configService.get('FRONTEND_URL')}/auth/success`
+        : `${this.configService.get('FRONTEND_URL')}/onboarding`;
+
+      res.redirect(redirectUrl);
     } catch (error: unknown) {
+      // 이미 처리된 HTTP 예외는 그대로 던지기
       if (
         error instanceof NotFoundException ||
-        error instanceof BadRequestException
+        error instanceof BadRequestException ||
+        error instanceof DevTokenProductionException
       ) {
         throw error;
       }
 
-      this.logger.error('개발용 토큰 발급 실패', {
+      // 예상치 못한 에러 로깅 및 처리
+      this.logger.error('개발용 토큰 발급 중 예상치 못한 오류', {
         error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
         nickname: body.nickname,
       });
-      throw new BadRequestException('토큰 발급 중 오류가 발생했습니다.');
+
+      throw new DevTokenGenerationException();
     }
   }
 }

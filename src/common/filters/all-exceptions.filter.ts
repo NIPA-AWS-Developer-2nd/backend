@@ -70,6 +70,16 @@ export class AllExceptionsFilter implements ExceptionFilter {
       userAgent: request.get('User-Agent'),
       ip: request.ip,
       stack: exception instanceof Error ? exception.stack : undefined,
+      // 요청 본문이 있다면 로깅 (민감한 정보 제외)
+      ...(request.body &&
+      typeof request.body === 'object' &&
+      Object.keys(request.body as Record<string, unknown>).length > 0
+        ? {
+            requestBody: this.sanitizeRequestBody(
+              request.body as Record<string, unknown>,
+            ),
+          }
+        : {}),
     };
 
     if (status >= 500) {
@@ -92,23 +102,58 @@ export class AllExceptionsFilter implements ExceptionFilter {
   }
 
   private getDefaultErrorCode(status: number): string {
-    if (status === 401) {
-      // HttpStatus.UNAUTHORIZED
-      return ErrorCode.AUTH_UNAUTHORIZED;
-    } else if (status === 403) {
-      // HttpStatus.FORBIDDEN
-      return ErrorCode.AUTH_UNAUTHORIZED;
-    } else if (status === 404) {
-      // HttpStatus.NOT_FOUND
-      return ErrorCode.USER_NOT_FOUND;
-    } else if (status === 400) {
-      // HttpStatus.BAD_REQUEST
-      return ErrorCode.VALIDATION_FAILED;
-    } else if (status === 409) {
-      // HttpStatus.CONFLICT
-      return ErrorCode.USER_ALREADY_EXISTS;
-    } else {
-      return ErrorCode.SYSTEM_INTERNAL_ERROR;
+    switch (status) {
+      case 400: // HttpStatus.BAD_REQUEST
+        return ErrorCode.VALIDATION_FAILED;
+      case 401: // HttpStatus.UNAUTHORIZED
+        return ErrorCode.AUTH_UNAUTHORIZED;
+      case 403: // HttpStatus.FORBIDDEN
+        return ErrorCode.AUTH_UNAUTHORIZED;
+      case 404: // HttpStatus.NOT_FOUND
+        return ErrorCode.USER_NOT_FOUND;
+      case 409: // HttpStatus.CONFLICT
+        return ErrorCode.USER_ALREADY_EXISTS;
+      case 422: // HttpStatus.UNPROCESSABLE_ENTITY
+        return ErrorCode.VALIDATION_FAILED;
+      case 500: // HttpStatus.INTERNAL_SERVER_ERROR
+        return ErrorCode.SYSTEM_INTERNAL_ERROR;
+      case 502: // HttpStatus.BAD_GATEWAY
+        return ErrorCode.SYSTEM_EXTERNAL_API_ERROR;
+      case 503: // HttpStatus.SERVICE_UNAVAILABLE
+        return ErrorCode.SYSTEM_EXTERNAL_API_ERROR;
+      case 504: // HttpStatus.GATEWAY_TIMEOUT
+        return ErrorCode.SYSTEM_EXTERNAL_API_ERROR;
+      default:
+        return ErrorCode.SYSTEM_INTERNAL_ERROR;
     }
+  }
+
+  // 민감한 정보를 제거하는 메서드
+  private sanitizeRequestBody(
+    body: Record<string, unknown>,
+  ): Record<string, unknown> {
+    if (!body || typeof body !== 'object') {
+      return body;
+    }
+
+    const sensitiveFields = [
+      'password',
+      'token',
+      'secret',
+      'key',
+      'authorization',
+      'auth',
+      'credential',
+    ];
+
+    const sanitized: Record<string, unknown> = { ...body };
+
+    for (const field of sensitiveFields) {
+      if (field in sanitized) {
+        sanitized[field] = '[REDACTED]';
+      }
+    }
+
+    return sanitized;
   }
 }
