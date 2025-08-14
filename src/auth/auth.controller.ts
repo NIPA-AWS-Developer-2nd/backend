@@ -296,7 +296,6 @@ export class AuthController {
       phoneVerifiedAt: user.phoneVerifiedAt,
       onboardingCompletedAt: user.onboardingCompletedAt,
       lastLoginAt: user.lastLoginAt,
-      districtVerifiedAt: user.districtVerifiedAt,
     };
 
     return response;

@@ -161,6 +161,14 @@ export class MissionService {
     category: string[];
     status: string;
     createdBy: string;
+    context?: {
+      photoGuide: string;
+      sampleImages: string[];
+    };
+    warnings?: Array<{
+      id: string;
+      content: string;
+    }>;
     createdAt: Date;
     updatedAt: Date;
   } | null> {
@@ -192,6 +200,14 @@ export class MissionService {
       category: mission.category ? [mission.category.slug] : [],
       status: mission.isActive ? 'ACTIVE' : 'INACTIVE',
       createdBy: 'admin',
+      context: mission.photoVerificationGuide || mission.sampleImageUrls?.length > 0 ? {
+        photoGuide: mission.photoVerificationGuide || '',
+        sampleImages: mission.sampleImageUrls || [],
+      } : undefined,
+      warnings: mission.precautions?.length > 0 ? mission.precautions.map((precaution, index) => ({
+        id: `warning-${index + 1}`,
+        content: precaution,
+      })) : undefined,
       createdAt: mission.createdAt,
       updatedAt: mission.updatedAt,
     };

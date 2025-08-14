@@ -3,6 +3,7 @@ import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { UserService } from './user.service';
 import { OnboardingCompleteDto } from './dto/onboarding.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
+import { VerifyLocationDto } from './dto/verify-location.dto';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 import { User } from '../../entities/user.entity';
 import { ApiResponseDto } from '../../common/dto/api-response.dto';
@@ -238,6 +239,149 @@ export class UserController {
       return ApiResponseDto.success(result, '활동 통계 조회가 완료되었습니다.');
     } catch {
       throw new ValidationException('활동 통계 조회 중 오류가 발생했습니다.');
+    }
+  }
+
+  // 위치 인증 상태 확인
+  @ApiOperation({
+    summary: '위치 인증 상태 확인',
+    description: '사용자의 위치 인증 상태를 확인합니다. (일주일 만료)',
+  })
+  @ApiResponse({
+    status: 200,
+    description: '위치 인증 상태 확인 성공',
+    example: {
+      status: 200,
+      message: '위치 인증 상태 확인이 완료되었습니다.',
+      result: true,
+      data: {
+        isVerified: true,
+        lastVerificationAt: '2024-01-15T10:30:00Z',
+      },
+    },
+  })
+  @Get('location-verification-status')
+  async checkLocationVerificationStatus(@CurrentUser() user: User) {
+    try {
+      const isVerified = await this.userService.checkLocationVerificationStatus(
+        user.id,
+      );
+
+      // 사용자 정보에서 마지막 인증 시간 가져오기
+      const userData = await this.userService.getCompleteUserInfo(user.id);
+
+      return ApiResponseDto.success(
+        {
+          isVerified,
+          lastVerificationAt: userData.lastLocationVerificationAt,
+          currentDistrict: userData.currentDistrict,
+        },
+        '위치 인증 상태 확인이 완료되었습니다.',
+      );
+    } catch {
+      throw new ValidationException(
+        '위치 인증 상태 확인 중 오류가 발생했습니다.',
+      );
+    }
+  }
+
+  // 위치 인증
+  @ApiOperation({
+    summary: '위치 인증',
+    description: '사용자의 현재 위치를 특정 지역과 인증합니다.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: '위치 인증 성공',
+    example: {
+      status: 200,
+      message: '위치 인증이 완료되었습니다.',
+      result: true,
+      data: {
+        isVerified: true,
+        district: {
+          id: '01HQXXX...',
+          districtName: '강남구',
+          city: '서울특별시',
+        },
+        distance: 1500,
+      },
+    },
+  })
+  @ApiResponse({
+    status: 400,
+    description: '위치 인증 실패',
+    example: {
+      status: 400,
+      message: '위치 인증에 실패했습니다.',
+      result: false,
+      data: {
+        isVerified: false,
+        message: '현재 위치가 강남구에서 2.5km 떨어져 있습니다.',
+        distance: 2500,
+      },
+    },
+  })
+  @Post('verify-location')
+  async verifyLocation(
+    @CurrentUser() user: User,
+    @Body() verifyLocationDto: VerifyLocationDto,
+  ) {
+    try {
+      const result = await this.userService.verifyLocation(
+        user.id,
+        verifyLocationDto,
+      );
+
+      if (result.isVerified) {
+        return ApiResponseDto.success(result, '위치 인증이 완료되었습니다.');
+      } else {
+        return ApiResponseDto.fail(
+          400,
+          result.message || '위치 인증에 실패했습니다.',
+        );
+      }
+    } catch (error: unknown) {
+      if (
+        error instanceof ResourceNotFoundException ||
+        error instanceof ValidationException
+      ) {
+        throw error;
+      }
+      throw new ValidationException('위치 인증 중 오류가 발생했습니다.');
+    }
+  }
+
+  // 활성 지역 목록 조회
+  @ApiOperation({
+    summary: '활성 지역 목록 조회',
+    description: '현재 활성화된 지역 목록을 조회합니다.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: '지역 목록 조회 성공',
+    example: {
+      status: 200,
+      message: '지역 목록 조회가 완료되었습니다.',
+      result: true,
+      data: [
+        {
+          id: '01HQXXX...',
+          regionCode: '11680',
+          districtName: '강남구',
+          city: '서울특별시',
+          isActive: true,
+        },
+      ],
+    },
+  })
+  @Get('districts')
+  async getActiveDistricts() {
+    try {
+      const result = await this.userService.getActiveDistricts();
+      return ApiResponseDto.success(result, '지역 목록 조회가 완료되었습니다.');
+    } catch {
+      throw new ValidationException('지역 목록 조회 중 오류가 발생했습니다.');
     }
   }
 }

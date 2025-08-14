@@ -23,6 +23,12 @@ export class District {
   @Column({ type: 'varchar', length: 20 })
   city: string;
 
+  @Column({ type: 'decimal', precision: 10, scale: 8, nullable: true })
+  latitude: number;
+
+  @Column({ type: 'decimal', precision: 11, scale: 8, nullable: true })
+  longitude: number;
+
   @Column({ type: 'boolean', default: true })
   isActive: boolean;
 

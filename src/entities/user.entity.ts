@@ -7,11 +7,14 @@ import {
   Index,
   OneToMany,
   OneToOne,
+  ManyToOne,
+  JoinColumn,
 } from 'typeorm';
 import { ulid } from 'ulid';
 import { SocialAccount } from './social-account.entity';
 import { UserProfile } from './user-profile.entity';
 import { UserRewards } from './user-rewards.entity';
+import { District } from './district.entity';
 
 export enum UserStatus {
   ACTIVE = 'active',
@@ -42,10 +45,13 @@ export class User {
   lastLoginAt: Date | null;
 
   @Column({ type: 'timestamptz', nullable: true })
-  onboardingCompletedAt: Date | null;
+  lastLocationVerificationAt: Date | null;
+
+  @Column({ type: 'varchar', length: 26, nullable: true })
+  currentDistrictId: string | null;
 
   @Column({ type: 'timestamptz', nullable: true })
-  districtVerifiedAt: Date | null;
+  onboardingCompletedAt: Date | null;
 
   @CreateDateColumn()
   createdAt: Date;
@@ -62,6 +68,10 @@ export class User {
 
   @OneToOne(() => UserRewards, (rewards) => rewards.user)
   rewards?: UserRewards;
+
+  @ManyToOne(() => District)
+  @JoinColumn({ name: 'currentDistrictId' })
+  currentDistrict?: District;
 
   constructor() {
     if (!this.id) {

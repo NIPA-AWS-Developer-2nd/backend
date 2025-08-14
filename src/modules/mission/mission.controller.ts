@@ -4,6 +4,7 @@ import {
   Query,
   Param,
   NotFoundException,
+  UseGuards,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -11,18 +12,22 @@ import {
   ApiResponse,
   ApiQuery,
   ApiParam,
+  ApiBearerAuth,
 } from '@nestjs/swagger';
 import { MissionService } from './mission.service';
 import { ApiResponseDto } from '../../common/dto/api-response.dto';
-import { Public } from '../../auth/decorators/public.decorator';
+import { RequireLocationVerification } from '../../auth/decorators/location-verified.decorator';
+import { LocationVerifiedGuard } from '../../auth/guards/location-verified.guard';
 import { GetMissionsQueryDto } from './dto/get-missions-query.dto';
 
 @ApiTags('Mission')
 @Controller('missions')
+@UseGuards(LocationVerifiedGuard)
 export class MissionController {
   constructor(private readonly missionService: MissionService) {}
 
-  @Public()
+  @RequireLocationVerification()
+  @ApiBearerAuth()
   @Get()
   @ApiOperation({
     summary: '미션 목록 조회',
@@ -51,6 +56,15 @@ export class MissionController {
     required: false,
     description: '페이지당 항목 수 (기본값: 5)',
     example: 5,
+  })
+  @ApiResponse({
+    status: 403,
+    description: '위치 인증이 필요함',
+    example: {
+      status: 403,
+      message: '지역 인증이 필요합니다. 설정에서 위치 인증을 완료해주세요.',
+      result: false,
+    },
   })
   @ApiResponse({
     status: 200,
@@ -102,7 +116,8 @@ export class MissionController {
     );
   }
 
-  @Public()
+  @RequireLocationVerification()
+  @ApiBearerAuth()
   @Get(':id')
   @ApiOperation({
     summary: '미션 상세 조회',
@@ -112,6 +127,15 @@ export class MissionController {
     name: 'id',
     description: '미션 ID (ULID)',
     example: '01HQXXX-CULTURE-LOTTE',
+  })
+  @ApiResponse({
+    status: 403,
+    description: '위치 인증이 필요함',
+    example: {
+      status: 403,
+      message: '지역 인증이 필요합니다. 설정에서 위치 인증을 완료해주세요.',
+      result: false,
+    },
   })
   @ApiResponse({
     status: 200,
