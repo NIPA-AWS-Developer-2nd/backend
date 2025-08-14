@@ -7,7 +7,12 @@ export interface CompleteUserInfo {
   phoneVerifiedAt: Date | null;
   onboardingCompletedAt: Date | null;
   lastLoginAt: Date | null;
-  districtVerifiedAt: Date | null;
+  lastLocationVerificationAt: Date | null;
+  currentDistrict: {
+    id: string;
+    districtName: string;
+    city: string;
+  } | null;
   profile: {
     nickname: string;
     profileImageUrl: string;

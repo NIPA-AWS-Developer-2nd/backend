@@ -1,14 +1,24 @@
-import { Controller, Get, Query } from '@nestjs/common';
-import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { Controller, Get, Query, UseGuards } from '@nestjs/common';
+import {
+  ApiOperation,
+  ApiResponse,
+  ApiTags,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import { MeetingService } from './meeting.service';
 import { GetMeetingsQueryDto } from './dto/get-meetings-query.dto';
 import { GetMeetingsResponseDto } from './dto/meeting-response.dto';
+import { RequireLocationVerification } from '../../auth/decorators/location-verified.decorator';
+import { LocationVerifiedGuard } from '../../auth/guards/location-verified.guard';
 
 @ApiTags('meetings')
 @Controller('meetings')
+@UseGuards(LocationVerifiedGuard)
 export class MeetingController {
   constructor(private readonly meetingService: MeetingService) {}
 
+  @RequireLocationVerification()
+  @ApiBearerAuth()
   @Get()
   @ApiOperation({
     summary: '모임 목록 조회',
@@ -20,6 +30,15 @@ export class MeetingController {
 - 필터: 상태, 카테고리, 지역구, 난이도, 검색 키워드
 - 정렬: latest(최신순), deadline(마감순), popular(인기순)
     `,
+  })
+  @ApiResponse({
+    status: 403,
+    description: '위치 인증이 필요함',
+    example: {
+      status: 403,
+      message: '지역 인증이 필요합니다. 설정에서 위치 인증을 완료해주세요.',
+      result: false,
+    },
   })
   @ApiResponse({
     status: 200,

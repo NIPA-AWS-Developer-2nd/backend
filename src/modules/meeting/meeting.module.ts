@@ -8,6 +8,8 @@ import {
   MeetingProfileTrait,
   MeetingParticipant,
 } from '../../entities';
+import { LocationVerifiedGuard } from '../../auth/guards/location-verified.guard';
+import { UserModule } from '../user/user.module';
 
 @Module({
   imports: [
@@ -17,9 +19,10 @@ import {
       MeetingProfileTrait,
       MeetingParticipant,
     ]),
+    UserModule,
   ],
   controllers: [MeetingController],
-  providers: [MeetingService],
+  providers: [MeetingService, LocationVerifiedGuard],
   exports: [MeetingService],
 })
 export class MeetingModule {}

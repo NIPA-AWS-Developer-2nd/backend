@@ -3,11 +3,13 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { MissionController } from './mission.controller';
 import { MissionService } from './mission.service';
 import { Mission } from '../../entities/mission.entity';
+import { LocationVerifiedGuard } from '../../auth/guards/location-verified.guard';
+import { UserModule } from '../user/user.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Mission])],
+  imports: [TypeOrmModule.forFeature([Mission]), UserModule],
   controllers: [MissionController],
-  providers: [MissionService],
+  providers: [MissionService, LocationVerifiedGuard],
   exports: [MissionService],
 })
 export class MissionModule {}

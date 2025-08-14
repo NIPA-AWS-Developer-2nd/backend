@@ -16,6 +16,10 @@ import {
 } from '../../entities';
 import { OnboardingCompleteDto } from './dto/onboarding.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
+import {
+  VerifyLocationDto,
+  LocationVerificationResponseDto,
+} from './dto/verify-location.dto';
 import { CompleteUserInfo } from './types';
 
 @Injectable()
@@ -154,7 +158,7 @@ export class UserService {
   async getCompleteUserInfo(userId: string): Promise<CompleteUserInfo> {
     const user = await this.userRepository.findOne({
       where: { id: userId },
-      relations: ['socialAccounts'],
+      relations: ['socialAccounts', 'currentDistrict'],
     });
 
     if (!user) {
@@ -205,7 +209,14 @@ export class UserService {
       phoneVerifiedAt: user.phoneVerifiedAt,
       onboardingCompletedAt: user.onboardingCompletedAt,
       lastLoginAt: user.lastLoginAt,
-      districtVerifiedAt: user.districtVerifiedAt,
+      lastLocationVerificationAt: user.lastLocationVerificationAt,
+      currentDistrict: user.currentDistrict
+        ? {
+            id: user.currentDistrict.id,
+            districtName: user.currentDistrict.districtName,
+            city: user.currentDistrict.city,
+          }
+        : null,
 
       // 프로필 정보
       profile: profile
@@ -254,12 +265,6 @@ export class UserService {
     const profile = await this.userProfileRepository.findOne({
       where: { userId },
     });
-
-    const _district = profile?.districtId
-      ? await this.districtRepository.findOne({
-          where: { id: profile.districtId },
-        })
-      : null;
 
     // 관심사 정보 조회 (name과 icon 함께)
     let interests: Array<{ name: string; icon: string }> = [];
@@ -425,5 +430,134 @@ export class UserService {
       hostedMeetingCount: 0, // TODO: 모임 테이블에서 주최한 모임 수 조회
       completedMissionCount: 0, // TODO: 완료된 미션 수 조회
     };
+  }
+
+  // 위치 인증 여부 체크 (일주일 만료 확인)
+  async checkLocationVerificationStatus(userId: string): Promise<boolean> {
+    const user = await this.userRepository.findOne({
+      where: { id: userId },
+      select: ['lastLocationVerificationAt'],
+    });
+
+    if (!user || !user.lastLocationVerificationAt) {
+      return false;
+    }
+
+    // 일주일(7일) 체크
+    const weekInMs = 7 * 24 * 60 * 60 * 1000;
+    const now = new Date();
+    const lastVerification = new Date(user.lastLocationVerificationAt);
+
+    return now.getTime() - lastVerification.getTime() < weekInMs;
+  }
+
+  // 거리 계산 함수 (Haversine formula)
+  private calculateDistance(
+    lat1: number,
+    lng1: number,
+    lat2: number,
+    lng2: number,
+  ): number {
+    const R = 6371e3; // 지구 반경 (미터)
+    const φ1 = (lat1 * Math.PI) / 180;
+    const φ2 = (lat2 * Math.PI) / 180;
+    const Δφ = ((lat2 - lat1) * Math.PI) / 180;
+    const Δλ = ((lng2 - lng1) * Math.PI) / 180;
+
+    const a =
+      Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+      Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+    return R * c;
+  }
+
+  // 위치 인증
+  async verifyLocation(
+    userId: string,
+    verifyLocationDto: VerifyLocationDto,
+  ): Promise<LocationVerificationResponseDto> {
+    const { latitude, longitude, districtId } = verifyLocationDto;
+
+    // 사용자 확인
+    const user = await this.userRepository.findOne({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      throw new NotFoundException('사용자를 찾을 수 없습니다.');
+    }
+
+    // 구역 정보 확인
+    const district = await this.districtRepository.findOne({
+      where: { id: districtId, isActive: true },
+    });
+
+    if (!district) {
+      throw new NotFoundException('해당 지역을 찾을 수 없습니다.');
+    }
+
+    // 임시로 각 구역의 중심 좌표 (실제로는 districts 테이블에 좌표 컬럼이 필요)
+    // TODO: districts 테이블에 latitude, longitude, radius 컬럼 추가 필요
+    const districtCoordinates: Record<
+      string,
+      { lat: number; lng: number; radius: number }
+    > = {
+      // 서울 주요 구역들의 대략적인 중심 좌표
+      강남구: { lat: 37.5172, lng: 127.0473, radius: 5000 },
+      송파구: { lat: 37.5145, lng: 127.1059, radius: 5000 },
+      서초구: { lat: 37.4837, lng: 127.0324, radius: 5000 },
+      마포구: { lat: 37.5637, lng: 126.9084, radius: 5000 },
+      용산구: { lat: 37.5384, lng: 126.965, radius: 4000 },
+    };
+
+    const coords = districtCoordinates[district.districtName];
+
+    if (!coords) {
+      throw new BadRequestException('아직 지원하지 않는 지역입니다.');
+    }
+
+    // 거리 계산
+    const distance = this.calculateDistance(
+      latitude,
+      longitude,
+      coords.lat,
+      coords.lng,
+    );
+
+    const isWithinBoundary = distance <= coords.radius;
+
+    let message: string | undefined;
+    if (!isWithinBoundary) {
+      const distanceKm = (distance / 1000).toFixed(1);
+      message = `현재 위치가 ${district.districtName}에서 ${distanceKm}km 떨어져 있습니다.`;
+    }
+
+    // 인증 성공 시 사용자 정보 업데이트
+    if (isWithinBoundary) {
+      await this.userRepository.update(userId, {
+        lastLocationVerificationAt: new Date(),
+        currentDistrictId: districtId,
+      });
+    }
+
+    return {
+      isVerified: isWithinBoundary,
+      district: {
+        id: district.id,
+        districtName: district.districtName,
+        city: district.city,
+      },
+      distance: Math.round(distance),
+      message,
+    };
+  }
+
+  // 활성 구역 목록 조회
+  async getActiveDistricts() {
+    return this.districtRepository.find({
+      where: { isActive: true },
+      order: { city: 'ASC', districtName: 'ASC' },
+    });
   }
 }
