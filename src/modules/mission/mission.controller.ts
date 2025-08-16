@@ -5,6 +5,7 @@ import {
   Param,
   NotFoundException,
   UseGuards,
+  Req,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -108,8 +109,9 @@ export class MissionController {
       },
     },
   })
-  async findAll(@Query() query: GetMissionsQueryDto) {
-    const result = await this.missionService.findAll(query);
+  async findAll(@Query() query: GetMissionsQueryDto, @Req() req: any) {
+    const userId = req.user?.id; // JWT에서 사용자 ID 추출
+    const result = await this.missionService.findAll(query, userId);
     return ApiResponseDto.success(
       result,
       '미션 목록을 성공적으로 조회했습니다.',
@@ -176,8 +178,9 @@ export class MissionController {
       result: false,
     },
   })
-  async findOne(@Param('id') id: string) {
-    const mission = await this.missionService.findOne(id);
+  async findOne(@Param('id') id: string, @Req() req: any) {
+    const userId = req.user?.id; // JWT에서 사용자 ID 추출
+    const mission = await this.missionService.findOne(id, userId);
 
     if (!mission) {
       throw new NotFoundException('미션을 찾을 수 없습니다.');

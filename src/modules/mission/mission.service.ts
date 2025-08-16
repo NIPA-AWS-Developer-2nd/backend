@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Mission, MissionDifficulty } from '../../entities/mission.entity';
+import { UserMission } from '../../entities/user-mission.entity';
 import {
   GetMissionsQueryDto,
   DifficultyEnum,
@@ -12,9 +13,11 @@ export class MissionService {
   constructor(
     @InjectRepository(Mission)
     private readonly missionRepository: Repository<Mission>,
+    @InjectRepository(UserMission)
+    private readonly userMissionRepository: Repository<UserMission>,
   ) {}
 
-  async findAll(query: GetMissionsQueryDto) {
+  async findAll(query: GetMissionsQueryDto, userId?: string) {
     const {
       category,
       difficulty,
@@ -41,6 +44,9 @@ export class MissionService {
     if (difficulty) {
       let mappedDifficulty: MissionDifficulty;
       switch (difficulty) {
+        case DifficultyEnum.VERY_EASY:
+          mappedDifficulty = MissionDifficulty.VERY_EASY;
+          break;
         case DifficultyEnum.EASY:
           mappedDifficulty = MissionDifficulty.EASY;
           break;
@@ -49,6 +55,9 @@ export class MissionService {
           break;
         case DifficultyEnum.HARD:
           mappedDifficulty = MissionDifficulty.HARD;
+          break;
+        case DifficultyEnum.VERY_HARD:
+          mappedDifficulty = MissionDifficulty.VERY_HARD;
           break;
         default:
           mappedDifficulty = MissionDifficulty.MEDIUM;
@@ -62,10 +71,10 @@ export class MissionService {
     if (participants) {
       switch (participants) {
         case 'medium':
-          queryBuilder.andWhere('mission.maxParticipants BETWEEN 4 AND 6');
+          queryBuilder.andWhere('mission.participants BETWEEN 4 AND 6');
           break;
         case 'large':
-          queryBuilder.andWhere('mission.maxParticipants > 6');
+          queryBuilder.andWhere('mission.participants > 6');
           break;
       }
     }
@@ -111,22 +120,37 @@ export class MissionService {
     // 총 개수와 데이터 조회
     const [missions, totalItems] = await queryBuilder.getManyAndCount();
 
+    // 사용자가 완료한 미션 목록 조회 (userId가 있을 때만)
+    let completedMissionIds: string[] = [];
+    if (userId) {
+      const completedMissions = await this.userMissionRepository
+        .createQueryBuilder('userMission')
+        .where('userMission.userId = :userId', { userId })
+        .andWhere('userMission.completedAt IS NOT NULL')
+        .select(['userMission.missionId'])
+        .getMany();
+      completedMissionIds = completedMissions.map((um) => um.missionId);
+    }
+
     // 응답 포맷 맞추기
-    const formattedMissions = missions.map((mission) => ({
-      id: mission.id,
-      title: mission.title,
-      description: mission.description,
-      thumbnailUrl: mission.thumbnailUrl,
-      point: mission.basePoints,
-      difficulty: mission.difficulty.toUpperCase(), // EASY, MEDIUM, HARD
-      duration: mission.estimatedDuration,
-      minParticipants: mission.minParticipants,
-      maxParticipants: mission.maxParticipants,
-      category: mission.category ? [mission.category.slug] : [],
-      isActive: mission.isActive,
-      createdAt: mission.createdAt,
-      updatedAt: mission.updatedAt,
-    }));
+    const formattedMissions = missions.map((mission) => {
+      const isCompleted = userId ? completedMissionIds.includes(mission.id) : false;
+      return {
+        id: mission.id,
+        title: mission.title,
+        description: mission.description,
+        thumbnailUrl: mission.thumbnailUrl,
+        point: mission.basePoints,
+        difficulty: mission.difficulty.toUpperCase(), // EASY, MEDIUM, HARD
+        duration: mission.estimatedDuration,
+        participants: mission.participants,
+        category: mission.category ? [mission.category.slug] : [],
+        isActive: mission.isActive,
+        isCompleted,
+        createdAt: mission.createdAt,
+        updatedAt: mission.updatedAt,
+      };
+    });
 
     const totalPages = Math.ceil(totalItems / limit);
     const hasNextPage = page < totalPages;
@@ -145,7 +169,10 @@ export class MissionService {
     };
   }
 
-  async findOne(id: string): Promise<{
+  async findOne(
+    id: string,
+    userId?: string,
+  ): Promise<{
     id: string;
     title: string;
     description: string;
@@ -153,14 +180,21 @@ export class MissionService {
     point: number;
     difficulty: string;
     duration: number;
-    minParticipants: number;
-    maxParticipants: number;
+    participants: number;
     minDuration: number;
     minPhotoCount: number;
     region_code: string;
+    location: string | null;
+    district?: {
+      districtId: string;
+      districtName: string;
+      city: string;
+      isActive: boolean;
+    };
     category: string[];
     status: string;
     createdBy: string;
+    isCompleted: boolean;
     context?: {
       photoGuide: string;
       sampleImages: string[];
@@ -184,6 +218,18 @@ export class MissionService {
       return null;
     }
 
+    // 사용자의 해당 미션 완료 여부 확인
+    let isCompleted = false;
+    if (userId) {
+      const userMission = await this.userMissionRepository.findOne({
+        where: {
+          userId,
+          missionId: id,
+        },
+      });
+      isCompleted = userMission !== null && userMission.completedAt !== null;
+    }
+
     return {
       id: mission.id,
       title: mission.title,
@@ -192,22 +238,37 @@ export class MissionService {
       point: mission.basePoints,
       difficulty: mission.difficulty.toUpperCase(),
       duration: mission.estimatedDuration,
-      minParticipants: mission.minParticipants,
-      maxParticipants: mission.maxParticipants,
+      participants: mission.participants,
       minDuration: mission.minimumDuration,
       minPhotoCount: 1,
       region_code: mission.district?.regionCode || '',
+      location: mission.location,
+      district: mission.district
+        ? {
+            districtId: mission.district.id,
+            districtName: mission.district.districtName,
+            city: mission.district.city,
+            isActive: mission.district.isActive,
+          }
+        : undefined,
       category: mission.category ? [mission.category.slug] : [],
       status: mission.isActive ? 'ACTIVE' : 'INACTIVE',
       createdBy: 'admin',
-      context: mission.photoVerificationGuide || mission.sampleImageUrls?.length > 0 ? {
-        photoGuide: mission.photoVerificationGuide || '',
-        sampleImages: mission.sampleImageUrls || [],
-      } : undefined,
-      warnings: mission.precautions?.length > 0 ? mission.precautions.map((precaution, index) => ({
-        id: `warning-${index + 1}`,
-        content: precaution,
-      })) : undefined,
+      isCompleted,
+      context:
+        mission.photoVerificationGuide || mission.sampleImageUrls?.length > 0
+          ? {
+              photoGuide: mission.photoVerificationGuide || '',
+              sampleImages: mission.sampleImageUrls || [],
+            }
+          : undefined,
+      warnings:
+        mission.precautions?.length > 0
+          ? mission.precautions.map((precaution, index) => ({
+              id: `warning-${index + 1}`,
+              content: precaution,
+            }))
+          : undefined,
       createdAt: mission.createdAt,
       updatedAt: mission.updatedAt,
     };
