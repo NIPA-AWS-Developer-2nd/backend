@@ -7,9 +7,13 @@ import {
   MeetingProfile,
   MeetingProfileTrait,
   MeetingParticipant,
+  Mission,
+  MeetingLike,
 } from '../../entities';
 import { LocationVerifiedGuard } from '../../auth/guards/location-verified.guard';
 import { UserModule } from '../user/user.module';
+import { SchedulerModule } from '../scheduler/scheduler.module';
+import { PointModule } from '../point/point.module';
 
 @Module({
   imports: [
@@ -18,8 +22,12 @@ import { UserModule } from '../user/user.module';
       MeetingProfile,
       MeetingProfileTrait,
       MeetingParticipant,
+      Mission,
+      MeetingLike,
     ]),
     UserModule,
+    SchedulerModule,
+    PointModule,
   ],
   controllers: [MeetingController],
   providers: [MeetingService, LocationVerifiedGuard],
