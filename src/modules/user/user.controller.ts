@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Body } from '@nestjs/common';
+import { Controller, Get, Post, Put, Body, Param } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { UserService } from './user.service';
 import { OnboardingCompleteDto } from './dto/onboarding.dto';
@@ -382,6 +382,86 @@ export class UserController {
       return ApiResponseDto.success(result, '지역 목록 조회가 완료되었습니다.');
     } catch {
       throw new ValidationException('지역 목록 조회 중 오류가 발생했습니다.');
+    }
+  }
+
+  // 테스트용: 모든 사용자 목록 조회 (개발 환경에서만)
+  @Get('list')
+  async getAllUsers() {
+    if (process.env.NODE_ENV !== 'development') {
+      throw new ValidationException('개발 환경에서만 사용 가능합니다.');
+    }
+    
+    try {
+      const result = await this.userService.getAllUsers();
+      return ApiResponseDto.success(result, '사용자 목록 조회가 완료되었습니다.');
+    } catch {
+      throw new ValidationException('사용자 목록 조회 중 오류가 발생했습니다.');
+    }
+  }
+
+  // 다른 사용자 프로필 조회
+  @ApiOperation({
+    summary: '다른 사용자 프로필 조회',
+    description: '특정 사용자의 공개 프로필 정보를 조회합니다.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: '사용자 프로필 조회 성공',
+    example: {
+      status: 200,
+      message: '사용자 프로필 조회가 완료되었습니다.',
+      result: true,
+      data: {
+        id: '01HQXXX...',
+        profile: {
+          nickname: '사용자',
+          bio: '안녕하세요!',
+          profileImageUrl: 'https://example.com/image.jpg',
+          interests: ['문화', '스포츠'],
+          mbti: 'ENFP',
+        },
+        stats: {
+          verificationCount: 45,
+          reviewCount: 24,
+          hostedMeetingCount: 18,
+          completedMissionCount: 12,
+        },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 404,
+    description: '사용자를 찾을 수 없음',
+    example: {
+      status: 404,
+      message: '사용자를 찾을 수 없습니다.',
+      result: false,
+      data: { errorCode: 'USER_NOT_FOUND' },
+    },
+  })
+  @Get(':userId/profile')
+  async getUserProfileById(@Param('userId') userId: string) {
+    try {
+      const result = await this.userService.getPublicUserProfile(userId);
+
+      if (!result) {
+        throw new ResourceNotFoundException(
+          '사용자',
+          userId,
+          ErrorCode.USER_NOT_FOUND,
+        );
+      }
+
+      return ApiResponseDto.success(
+        result,
+        '사용자 프로필 조회가 완료되었습니다.',
+      );
+    } catch (error: unknown) {
+      if (error instanceof ResourceNotFoundException) {
+        throw error;
+      }
+      throw new ValidationException('사용자 프로필 조회 중 오류가 발생했습니다.');
     }
   }
 }

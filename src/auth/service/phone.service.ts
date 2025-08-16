@@ -110,7 +110,8 @@ export class PhoneService {
       // 기존 사용자가 있는 경우 - 자동 통합
       return {
         success: true,
-        message: '기존 계정으로 로그인됩니다.',
+        message:
+          '이미 가입된 전화번호가 존재합니다. 통합된 계정으로 로그인됩니다.',
         existingUser: {
           id: existingUser.id,
           hasProfile: !!existingUser.onboardingCompletedAt,

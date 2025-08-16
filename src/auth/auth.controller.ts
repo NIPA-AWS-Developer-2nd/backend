@@ -288,7 +288,12 @@ export class AuthController {
   }
 
   @Get('me')
-  getMe(@CurrentUser() user: User) {
+  async getMe(@CurrentUser() user: User) {
+    // 사용자 프로필 정보 조회
+    const profile = await this.userProfileRepository.findOne({
+      where: { userId: user.id },
+    });
+
     const response = {
       id: user.id,
       phoneNumber: user.phoneNumber,
@@ -296,6 +301,14 @@ export class AuthController {
       phoneVerifiedAt: user.phoneVerifiedAt,
       onboardingCompletedAt: user.onboardingCompletedAt,
       lastLoginAt: user.lastLoginAt,
+      // 프로필 정보 추가
+      nickname: profile?.nickname || null,
+      profileImageUrl: profile?.profileImageUrl || null,
+      bio: profile?.bio || null,
+      birthYear: profile?.birthYear || null,
+      gender: profile?.gender || null,
+      mbti: profile?.mbti || null,
+      districtId: profile?.districtId || null,
     };
 
     return response;
