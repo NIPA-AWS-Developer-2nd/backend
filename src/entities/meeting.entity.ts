@@ -14,12 +14,14 @@ import { Mission } from './mission.entity';
 import { User } from './user.entity';
 import { MeetingParticipant } from './meeting-participant.entity';
 import { MeetingProfile } from './meeting-profile.entity';
+import { MeetingLike } from './meeting-like.entity';
 
 export enum MeetingStatus {
   RECRUITING = 'recruiting',
+  READY = 'ready',
   ACTIVE = 'active',
   COMPLETED = 'completed',
-  CANCELLED = 'cancelled',
+  CANCELED = 'canceled',
 }
 
 @Entity('meetings')
@@ -46,14 +48,49 @@ export class Meeting {
   })
   status: MeetingStatus;
 
-  @Column({ type: 'integer', nullable: true })
-  maxParticipants: number | null;
+  @Column({ type: 'integer', default: 4 })
+  maxParticipants: number;
 
   @Column({ type: 'varchar', length: 255, nullable: true })
   qrCodeToken: string | null;
 
   @Column({ type: 'timestamptz', nullable: true })
   qrGeneratedAt: Date | null;
+
+  @Column({ type: 'text', nullable: true })
+  introduction: string | null;
+
+  @Column({ type: 'integer', default: 50 })
+  focusScore: number;
+
+  @Column({ type: 'integer', default: 0 })
+  likesCount: number;
+
+  // Point-related fields
+  @Column({ type: 'integer', nullable: true })
+  requiredPoints: number; // 참여에 필요한 포인트 (mission basePoints * 1배)
+
+  @Column({ type: 'integer', nullable: true })
+  rewardPoints: number; // 완료 시 받을 포인트 (mission basePoints)
+
+  @Column({ type: 'boolean', default: false })
+  isPointsCollected: boolean; // 포인트 수집 완료 여부
+
+  @Column({ type: 'boolean', default: false })
+  isRewardsDistributed: boolean; // 보상 지급 완료 여부
+
+  // Cancellation policy fields
+  @Column({ type: 'timestamptz', nullable: true })
+  cancelledAt: Date;
+
+  @Column({ type: 'varchar', length: 26, nullable: true })
+  cancelledBy: string; // 취소한 사용자 ID
+
+  @Column({ type: 'text', nullable: true })
+  cancellationReason: string;
+
+  @Column({ type: 'integer', default: 2 })
+  minimumParticipants: number; // 최소 참여 인원 (호스트 포함)
 
   @CreateDateColumn({ type: 'timestamptz' })
   createdAt: Date;
@@ -71,10 +108,13 @@ export class Meeting {
   host?: User;
 
   @OneToMany(() => MeetingParticipant, (participant) => participant.meeting)
-  participants?: MeetingParticipant[];
+  participantList?: MeetingParticipant[];
 
   @OneToOne(() => MeetingProfile, (profile) => profile.meeting)
   profile?: MeetingProfile;
+
+  @OneToMany(() => MeetingLike, (like) => like.meeting)
+  likes?: MeetingLike[];
 
   constructor() {
     if (!this.id) {

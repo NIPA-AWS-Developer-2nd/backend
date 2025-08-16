@@ -10,6 +10,7 @@ export { UserInterests } from './user-interests.entity';
 export { UserHashtags } from './user-hashtags.entity';
 export { Mission, MissionDifficulty } from './mission.entity';
 export { Meeting, MeetingStatus } from './meeting.entity';
+export { MeetingLike } from './meeting-like.entity';
 export { MeetingProfile } from './meeting-profile.entity';
 export {
   MeetingProfileTrait,
@@ -21,3 +22,15 @@ export {
 } from './meeting-participant.entity';
 export { UserMission } from './user-mission.entity';
 export { MissionReview, VerificationStatus } from './mission-review.entity';
+export { ActivityLog, ActivityType } from './activity-log.entity';
+export {
+  PointTransaction,
+  PointTransactionType,
+  PointTransactionStatus,
+} from './point-transaction.entity';
+export {
+  MeetingAttendance,
+  AttendanceStatus,
+} from './meeting-attendance.entity';
+export { MeetingChat } from './meeting-chat.entity';
+export { MeetingChatRead } from './meeting-chat-read.entity';
