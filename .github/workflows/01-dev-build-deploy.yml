@@ -52,6 +52,8 @@ jobs:
           envkey_AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY}}
           envkey_AWS_S3_BUCKET_NAME: ${{ secrets.AWS_S3_BUCKET_NAME}}
           envkey_AWS_CLOUDFRONT_DOMAIN: ${{ secrets.AWS_CLOUDFRONT_DOMAIN}}
+          envkey_NAVER_MAP_CLIENT_ID: ${{ secrets.NAVER_MAP_CLIENT_ID }}
+          envkey_NAVER_MAP_CLIENT_SECRET: ${{ secrets.NAVER_MAP_CLIENT_SECRET }}
           file_name: .env.development
           fail_on_empty: false
           sort_keys: false
@@ -119,6 +121,9 @@ jobs:
             AWS_REGION=${{ secrets.AWS_REGION }}
             AWS_S3_BUCKET_NAME=${{ secrets.AWS_S3_BUCKET_NAME }}
             AWS_CLOUDFRONT_DOMAIN=${{ secrets.AWS_CLOUDFRONT_DOMAIN }}
+
+            NAVER_MAP_CLIENT_ID=${{ secrets.NAVER_MAP_CLIENT_ID }}
+            NAVER_MAP_CLIENT_SECRET=${{ secrets.NAVER_MAP_CLIENT_SECRET }}
 
       - name: Deploy Amazon ECS task definition
         uses: aws-actions/amazon-ecs-deploy-task-definition@v2
