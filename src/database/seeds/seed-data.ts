@@ -398,8 +398,26 @@ export const seedInitialData = async (dataSource: DataSource) => {
     }
   }
 
+  // 미션 시드 데이터 타입 정의
+  interface MissionSeedData {
+    id: string;
+    title: string;
+    description: string;
+    basePoints: number;
+    estimatedDuration: number;
+    participants: number;
+    minimumDuration: number;
+    difficulty: MissionDifficulty;
+    thumbnailUrl: string;
+    categorySlug: string;
+    location?: string;
+    photoVerificationGuide: string;
+    sampleImageUrls: string[];
+    precautions: string[];
+  }
+
   // 미션 데이터 시딩 - 5개 난이도별 포인트 (500, 1000, 1500, 2000, 2500)
-  const missionData = [
+  const missionData: MissionSeedData[] = [
     {
       id: '01JG9H7E2FQMC8GN1VKXR6W3T9',
       title: '송파구 카페 방문',
@@ -582,8 +600,8 @@ export const seedInitialData = async (dataSource: DataSource) => {
         photoVerificationGuide: mission.photoVerificationGuide,
         sampleImageUrls: mission.sampleImageUrls,
         precautions: mission.precautions,
-        districtId: songpaDistrictForMissions!.id,
-        location: (mission as any).location || null,
+        districtId: songpaDistrictForMissions.id,
+        location: mission.location || null,
         isActive: true,
       });
 
@@ -639,7 +657,7 @@ export const seedInitialData = async (dataSource: DataSource) => {
         mbti: 'INFJ',
         interestIds: [firstInterest.id],
         hashtagIds: [firstHashtag.id],
-        districtId: songpaDistrictForMissions!.id,
+        districtId: songpaDistrict.id,
         points: 6500,
       });
       await userProfileRepository.save(hostProfile);
@@ -686,7 +704,7 @@ export const seedInitialData = async (dataSource: DataSource) => {
         mbti: 'ENFP',
         interestIds: [firstInterest.id],
         hashtagIds: [firstHashtag.id],
-        districtId: songpaDistrictForMissions!.id,
+        districtId: songpaDistrict.id,
         points: 3200,
       });
       await userProfileRepository.save(participantProfile);
@@ -826,16 +844,11 @@ export const seedInitialData = async (dataSource: DataSource) => {
     }
   }
 
-  // 모든 미션과 사용자 가져오기 (종합 모임용)
+  // 모든 미션과 사용자 가져오기
   const missions = await missionRepository
     .createQueryBuilder('mission')
     .where('mission.isActive = :isActive', { isActive: true })
     .getMany();
-
-  const dummyUsers = await userRepository.find({
-    relations: ['profile'],
-    where: { status: UserStatus.ACTIVE },
-  });
 
   // 참가자 테스트 계정 ID 찾기
   const participantTestId = (

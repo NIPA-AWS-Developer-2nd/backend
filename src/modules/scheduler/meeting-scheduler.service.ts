@@ -2,11 +2,14 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, LessThan } from 'typeorm';
+import { ulid } from 'ulid';
 import {
   Meeting,
   MeetingStatus,
   MeetingParticipant,
   ParticipantStatus,
+  MeetingAttendance,
+  AttendanceStatus,
 } from '../../entities';
 import { PointService } from '../point/point.service';
 
@@ -19,6 +22,8 @@ export class MeetingSchedulerService {
     private readonly meetingRepository: Repository<Meeting>,
     @InjectRepository(MeetingParticipant)
     private readonly participantRepository: Repository<MeetingParticipant>,
+    @InjectRepository(MeetingAttendance)
+    private readonly attendanceRepository: Repository<MeetingAttendance>,
     private readonly pointService: PointService,
   ) {}
 
@@ -271,13 +276,13 @@ export class MeetingSchedulerService {
     });
 
     // 출석체크 데이터 조회
-    const attendances = await this.meetingRepository.manager
-      .getRepository('MeetingAttendance')
-      .find({ where: { meetingId } });
+    const attendances = await this.attendanceRepository.find({
+      where: { meetingId },
+    });
 
     const checkedInUserIds = new Set(
       attendances
-        .filter((att) => att.status === 'checked_in')
+        .filter((att) => att.status === AttendanceStatus.CHECKED_IN)
         .map((att) => att.userId),
     );
 
@@ -325,7 +330,7 @@ export class MeetingSchedulerService {
    * QR 토큰 생성 헬퍼
    */
   private generateQRToken(): string {
-    return require('ulid').ulid();
+    return ulid();
   }
 
   /**
@@ -340,15 +345,14 @@ export class MeetingSchedulerService {
       await this.pointService.applyNoShowPenalty(userId, meetingId, 200);
 
       // 노쇼 기록 생성
-      await this.meetingRepository.manager
-        .getRepository('MeetingAttendance')
-        .save({
-          id: require('ulid').ulid(),
-          meetingId,
-          userId,
-          status: 'no_show',
-          noShowMarkedAt: new Date(),
-        });
+      const attendance = this.attendanceRepository.create({
+        id: ulid(),
+        meetingId,
+        userId,
+        status: AttendanceStatus.NO_SHOW,
+        noShowMarkedAt: new Date(),
+      });
+      await this.attendanceRepository.save(attendance);
 
       this.logger.log(
         `Applied no-show penalty (-200P) to user ${userId} for meeting ${meetingId}`,
