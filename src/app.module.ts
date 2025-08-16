@@ -15,9 +15,15 @@ import { UserInterestsModule } from './modules/user-interests/user-interests.mod
 import { UserHashtagsModule } from './modules/user-hashtags/user-hashtags.module';
 import { MissionModule } from './modules/mission/mission.module';
 import { MeetingModule } from './modules/meeting/meeting.module';
+import { HomeModule } from './modules/home/home.module';
+import { LocationModule } from './modules/location/location.module';
 import { HealthModule } from './health/health.module';
 import { AuthModule } from './auth/auth.module';
 import { AwsModule } from './aws/aws.module';
+import { SchedulerModule } from './modules/scheduler/scheduler.module';
+import { PointModule } from './modules/point/point.module';
+import { AttendanceModule } from './modules/attendance/attendance.module';
+import { ChatModule } from './modules/chat/chat.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 
@@ -95,9 +101,15 @@ import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
     UserHashtagsModule,
     MissionModule,
     MeetingModule,
+    HomeModule,
+    LocationModule,
     HealthModule,
     AuthModule,
     AwsModule,
+    SchedulerModule,
+    PointModule,
+    AttendanceModule,
+    ChatModule,
   ],
   controllers: [AppController],
   providers: [

@@ -39,11 +39,27 @@ export class MeetingParticipant {
   @Column({ type: 'timestamptz', default: () => 'CURRENT_TIMESTAMP' })
   joinedAt: Date;
 
+  // Point payment tracking
+  @Column({ type: 'boolean', default: false })
+  pointsPaid: boolean; // 참여비 지불 완료 여부
+
+  @Column({ type: 'integer', nullable: true })
+  paidAmount: number; // 지불한 포인트 양
+
+  @Column({ type: 'varchar', length: 26, nullable: true })
+  paymentTransactionId: string; // 결제 트랜잭션 ID
+
+  @Column({ type: 'boolean', default: false })
+  rewardReceived: boolean; // 보상 수령 완료 여부
+
+  @Column({ type: 'varchar', length: 26, nullable: true })
+  rewardTransactionId: string; // 보상 트랜잭션 ID
+
   @CreateDateColumn({ type: 'timestamptz' })
   createdAt: Date;
 
   // Relations
-  @ManyToOne(() => Meeting, (meeting) => meeting.participants)
+  @ManyToOne(() => Meeting, (meeting) => meeting.participantList)
   @JoinColumn({ name: 'meetingId' })
   meeting?: Meeting;
 

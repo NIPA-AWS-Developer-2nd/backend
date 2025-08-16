@@ -16,6 +16,7 @@ import {
   AccountMergeFailedException,
 } from '../common/exceptions/business.exception';
 import { InvalidTokenException } from '../common/exceptions/auth.exception';
+import { ulid } from 'ulid';
 import { KakaoService } from './service/kakao.service';
 import { NaverService } from './service/naver.service';
 import { GoogleService } from './service/google.service';
@@ -59,6 +60,12 @@ export class AuthService {
     private userRewardsRepository: Repository<UserRewards>,
     @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger,
   ) {}
+
+  // dicebear 아바타 URL 생성
+  private generateAvatarUrl(userId: string): string {
+    // 사용자 ID를 시드로 사용하여 일관된 아바타 생성
+    return `https://api.dicebear.com/7.x/avataaars/svg?seed=${userId}`;
+  }
 
   // 전화번호 인증 코드 발송
   sendVerificationCode(phoneNumber: string): PhoneVerificationResult {
@@ -484,11 +491,11 @@ export class AuthService {
     nickname: string,
     profileImage: string,
   ) {
-    // UserProfile 생성 (OAuth 정보로 초기화)
+    // UserProfile 생성 (OAuth 정보로 초기화, dicebear 아바타 사용)
     const profile = this.userProfileRepository.create({
       userId,
       nickname: nickname || '알 수 없음',
-      profileImageUrl: profileImage || '',
+      profileImageUrl: this.generateAvatarUrl(userId),
       interestIds: [],
       hashtagIds: [],
       birthYear: null,

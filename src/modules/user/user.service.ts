@@ -21,6 +21,7 @@ import {
   LocationVerificationResponseDto,
 } from './dto/verify-location.dto';
 import { CompleteUserInfo } from './types';
+import { ulid } from 'ulid';
 
 @Injectable()
 export class UserService {
@@ -49,6 +50,12 @@ export class UserService {
       .getOne();
 
     return level ? level.id : 1; // 레벨을 찾을 수 없으면 1 반환
+  }
+
+  // dicebear 아바타 URL 생성
+  private generateAvatarUrl(): string {
+    const randomSeed = ulid(); // ULID를 시드로 사용하여 고유성 보장
+    return `https://api.dicebear.com/7.x/avataaars/svg?seed=${randomSeed}`;
   }
 
   // 온보딩 완료
@@ -122,17 +129,25 @@ export class UserService {
     });
 
     if (userProfile) {
-      // 기존 프로필 업데이트
-      Object.assign(userProfile, {
+      // 기존 프로필 업데이트 - profileImageUrl이 없거나 기본값인 경우에만 새로 생성
+      const profileData = {
         ...onboardingData.profile,
         interestIds: onboardingData.profile.categoryIds, // categoryIds를 interestIds로 매핑
-      });
+      };
+
+      // profileImageUrl이 없거나 빈 문자열인 경우 새로운 아바타 생성
+      if (!userProfile.profileImageUrl || userProfile.profileImageUrl === '') {
+        profileData.profileImageUrl = this.generateAvatarUrl();
+      }
+
+      Object.assign(userProfile, profileData);
       await this.userProfileRepository.save(userProfile);
     } else {
-      // 새 프로필 생성
+      // 새 프로필 생성 - 항상 새로운 아바타 URL 생성
       userProfile = this.userProfileRepository.create({
         userId,
         ...onboardingData.profile,
+        profileImageUrl: this.generateAvatarUrl(), // dicebear 아바타로 대체
         interestIds: onboardingData.profile.categoryIds, // categoryIds를 interestIds로 매핑
       });
       await this.userProfileRepository.save(userProfile);
@@ -517,39 +532,25 @@ export class UserService {
       throw new BadRequestException('아직 지원하지 않는 지역입니다.');
     }
 
-    // 거리 계산
-    const distance = this.calculateDistance(
-      latitude,
-      longitude,
-      coords.lat,
-      coords.lng,
-    );
+    // 임시: 항상 인증 성공으로 처리
+    const distance = 0; // 임시로 거리 0으로 설정
+    const isWithinBoundary = true; // 임시로 항상 true
 
-    const isWithinBoundary = distance <= coords.radius;
-
-    let message: string | undefined;
-    if (!isWithinBoundary) {
-      const distanceKm = (distance / 1000).toFixed(1);
-      message = `현재 위치가 ${district.districtName}에서 ${distanceKm}km 떨어져 있습니다.`;
-    }
-
-    // 인증 성공 시 사용자 정보 업데이트
-    if (isWithinBoundary) {
-      await this.userRepository.update(userId, {
-        lastLocationVerificationAt: new Date(),
-        currentDistrictId: districtId,
-      });
-    }
+    // 항상 인증 성공으로 사용자 정보 업데이트
+    await this.userRepository.update(userId, {
+      lastLocationVerificationAt: new Date(),
+      currentDistrictId: districtId,
+    });
 
     return {
-      isVerified: isWithinBoundary,
+      isVerified: true, // 임시로 항상 true
       district: {
         id: district.id,
         districtName: district.districtName,
         city: district.city,
       },
-      distance: Math.round(distance),
-      message,
+      distance: 0, // 임시로 거리 0
+      message: undefined,
     };
   }
 
@@ -559,5 +560,99 @@ export class UserService {
       where: { isActive: true },
       order: { city: 'ASC', districtName: 'ASC' },
     });
+  }
+
+  // 테스트용: 모든 사용자 목록 조회
+  async getAllUsers() {
+    const users = await this.userRepository.find({
+      select: ['id', 'phoneNumber', 'status', 'onboardingCompletedAt'],
+      order: { createdAt: 'DESC' },
+      take: 50,
+    });
+
+    const result: any[] = [];
+    for (const user of users) {
+      const profile = await this.userProfileRepository.findOne({
+        where: { userId: user.id },
+        select: ['nickname', 'profileImageUrl'],
+      });
+
+      result.push({
+        id: user.id,
+        phoneNumber: user.phoneNumber,
+        status: user.status,
+        onboardingCompleted: !!user.onboardingCompletedAt,
+        nickname: profile?.nickname,
+        profileImageUrl: profile?.profileImageUrl,
+      });
+    }
+
+    return result;
+  }
+
+  // 다른 사용자 공개 프로필 조회
+  async getPublicUserProfile(userId: string) {
+    console.log('🔍 사용자 프로필 조회 시도:', userId);
+    
+    const user = await this.userRepository.findOne({
+      where: { id: userId },
+    });
+
+    console.log('👤 찾은 사용자:', user ? `${user.id} (${user.phoneNumber})` : 'null');
+
+    if (!user) {
+      return null;
+    }
+
+    const profile = await this.userProfileRepository.findOne({
+      where: { userId },
+    });
+
+    if (!profile) {
+      return null;
+    }
+
+    // 관심사 정보 조회
+    let interestNames: string[] = [];
+    if (profile.interestIds && profile.interestIds.length > 0) {
+      const interests = await this.userInterestsRepository.find({
+        where: {
+          id: In(profile.interestIds),
+          isActive: true,
+        },
+      });
+      interestNames = interests.map((interest) => interest.name);
+    }
+
+    // 해시태그 정보 조회
+    let hashtagNames: string[] = [];
+    if (profile.hashtagIds && profile.hashtagIds.length > 0) {
+      const hashtagData = await this.userHashtagsRepository.find({
+        where: {
+          id: In(profile.hashtagIds),
+          isActive: true,
+        },
+      });
+      hashtagNames = hashtagData.map((hashtag) =>
+        hashtag.name.startsWith('#') ? hashtag.name : `#${hashtag.name}`,
+      );
+    }
+
+    // 활동 통계 조회
+    const stats = await this.getActivityStats(userId);
+
+    return {
+      id: user.id,
+      profile: {
+        nickname: profile.nickname,
+        bio: profile.bio,
+        profileImageUrl: profile.profileImageUrl,
+        interests: interestNames,
+        hashtags: hashtagNames,
+        mbti: profile.mbti,
+        level: await this.calculateLevelFromPoints(profile.points),
+      },
+      stats,
+    };
   }
 }

@@ -12,9 +12,11 @@ import { Category } from './category.entity';
 import { District } from './district.entity';
 
 export enum MissionDifficulty {
+  VERY_EASY = 'very_easy',
   EASY = 'easy',
   MEDIUM = 'medium',
   HARD = 'hard',
+  VERY_HARD = 'very_hard',
 }
 
 @Entity('missions')
@@ -28,11 +30,8 @@ export class Mission {
   @Column({ type: 'text' })
   description: string;
 
-  @Column({ type: 'integer', default: 1 })
-  minParticipants: number;
-
   @Column({ type: 'integer' })
-  maxParticipants: number;
+  participants: number;
 
   @Column({ type: 'integer' })
   estimatedDuration: number;
@@ -84,6 +83,12 @@ export class Mission {
     nullable: true,
   })
   hashtags: string[];
+
+  @Column({ type: 'integer', default: 0 })
+  hostStakePoints: number;
+
+  @Column({ type: 'integer', default: 0 })
+  participantStakePoints: number;
 
   @Column({ type: 'boolean', default: true })
   isActive: boolean;

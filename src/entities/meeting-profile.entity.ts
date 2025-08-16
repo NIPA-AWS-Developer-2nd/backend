@@ -42,6 +42,4 @@ export class MeetingProfile {
   @JoinColumn({ name: 'meetingId' })
   meeting?: Meeting;
 
-  @OneToMany(() => MeetingProfileTrait, (trait) => trait.meetingProfile)
-  traits?: MeetingProfileTrait[];
 }
