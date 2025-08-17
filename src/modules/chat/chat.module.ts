@@ -1,14 +1,15 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { 
-  MeetingChat, 
-  MeetingChatRead, 
-  Meeting, 
-  MeetingParticipant 
+import {
+  MeetingChat,
+  MeetingChatRead,
+  Meeting,
+  MeetingParticipant,
 } from '../../entities';
 import { ChatService } from './chat.service';
 import { ChatController } from './chat.controller';
 import { ChatGateway } from './chat.gateway';
+import { NotificationModule } from '../notification/notification.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { ChatGateway } from './chat.gateway';
       Meeting,
       MeetingParticipant,
     ]),
+    NotificationModule,
   ],
   controllers: [ChatController],
   providers: [ChatService, ChatGateway],

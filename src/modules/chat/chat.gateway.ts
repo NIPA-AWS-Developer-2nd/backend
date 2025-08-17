@@ -10,6 +10,7 @@ import {
 import { Server, Socket } from 'socket.io';
 import { Logger, UseGuards } from '@nestjs/common';
 import { ChatService, SendMessageDto, ChatMessage } from './chat.service';
+import { MeetingNotificationHelper } from '../notification/helpers/meeting-notification.helper';
 
 interface AuthenticatedSocket extends Socket {
   userId?: string;
@@ -18,7 +19,8 @@ interface AuthenticatedSocket extends Socket {
 
 @WebSocketGateway({
   cors: {
-    origin: process.env.NODE_ENV === 'development' ? '*' : process.env.CLIENT_URL,
+    origin:
+      process.env.NODE_ENV === 'development' ? '*' : process.env.CLIENT_URL,
     credentials: true,
   },
   namespace: '/chat',
@@ -30,14 +32,17 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   private readonly logger = new Logger(ChatGateway.name);
   private connectedUsers = new Map<string, Set<string>>(); // meetingId -> Set<userId>
 
-  constructor(private readonly chatService: ChatService) {}
+  constructor(
+    private readonly chatService: ChatService,
+    private readonly meetingNotificationHelper: MeetingNotificationHelper,
+  ) {}
 
   async handleConnection(client: AuthenticatedSocket) {
     try {
       // 실제 구현에서는 JWT 토큰을 통해 사용자 인증을 해야 합니다
       // 여기서는 간단히 query parameter로 처리
       const { userId, meetingId } = client.handshake.query;
-      
+
       if (!userId || !meetingId) {
         this.logger.warn('Connection rejected: missing userId or meetingId');
         client.disconnect();
@@ -57,13 +62,12 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       client.join(`meeting:${meetingId}`);
 
       this.logger.log(`User ${userId} connected to meeting ${meetingId}`);
-      
+
       // 다른 참가자들에게 사용자 입장 알림
       client.to(`meeting:${meetingId}`).emit('user_joined', {
         userId,
         timestamp: new Date(),
       });
-
     } catch (error) {
       this.logger.error('Connection error:', error);
       client.disconnect();
@@ -72,11 +76,11 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   async handleDisconnect(client: AuthenticatedSocket) {
     const { userId, meetingId } = client;
-    
+
     if (userId && meetingId) {
       // 연결된 사용자 목록에서 제거
       this.connectedUsers.get(meetingId)?.delete(userId);
-      
+
       // 다른 참가자들에게 사용자 퇴장 알림
       client.to(`meeting:${meetingId}`).emit('user_left', {
         userId,
@@ -94,7 +98,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   ) {
     try {
       const { userId, meetingId } = client;
-      
+
       if (!userId) {
         client.emit('error', { message: '인증되지 않은 사용자입니다.' });
         return;
@@ -108,14 +112,24 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       });
 
       // 모임 참가자들에게 메시지 브로드캐스트
-      this.server.to(`meeting:${data.meetingId}`).emit('new_message', chatMessage);
+      this.server
+        .to(`meeting:${data.meetingId}`)
+        .emit('new_message', chatMessage);
+
+      // 채팅 알림 발송 (비동기)
+      setImmediate(async () => {
+        try {
+          await this.sendChatNotification(data.meetingId, userId, data.message);
+        } catch (error) {
+          this.logger.error('Failed to send chat notification:', error);
+        }
+      });
 
       this.logger.log(`Message sent by ${userId} to meeting ${data.meetingId}`);
-      
     } catch (error) {
       this.logger.error('Send message error:', error);
-      client.emit('error', { 
-        message: error.message || '메시지 전송에 실패했습니다.' 
+      client.emit('error', {
+        message: error.message || '메시지 전송에 실패했습니다.',
       });
     }
   }
@@ -127,13 +141,17 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   ) {
     try {
       const { userId } = client;
-      
+
       if (!userId) {
         client.emit('error', { message: '인증되지 않은 사용자입니다.' });
         return;
       }
 
-      await this.chatService.markMultipleAsRead(userId, data.chatIds, data.meetingId);
+      await this.chatService.markMultipleAsRead(
+        userId,
+        data.chatIds,
+        data.meetingId,
+      );
 
       // 모임 참가자들에게 읽음 상태 업데이트 알림
       this.server.to(`meeting:${data.meetingId}`).emit('messages_read', {
@@ -141,11 +159,10 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         chatIds: data.chatIds,
         timestamp: new Date(),
       });
-
     } catch (error) {
       this.logger.error('Mark as read error:', error);
-      client.emit('error', { 
-        message: error.message || '읽음 처리에 실패했습니다.' 
+      client.emit('error', {
+        message: error.message || '읽음 처리에 실패했습니다.',
       });
     }
   }
@@ -157,7 +174,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   ) {
     try {
       const { userId } = client;
-      
+
       if (!userId) {
         client.emit('error', { message: '인증되지 않은 사용자입니다.' });
         return;
@@ -179,15 +196,17 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       this.connectedUsers.get(data.meetingId)?.add(userId);
 
       // 채팅 메시지 로드해서 전송
-      const messages = await this.chatService.getChatMessages(data.meetingId, userId);
+      const messages = await this.chatService.getChatMessages(
+        data.meetingId,
+        userId,
+      );
       client.emit('chat_history', messages);
 
       this.logger.log(`User ${userId} joined meeting ${data.meetingId}`);
-      
     } catch (error) {
       this.logger.error('Join meeting error:', error);
-      client.emit('error', { 
-        message: error.message || '모임 채팅방 참여에 실패했습니다.' 
+      client.emit('error', {
+        message: error.message || '모임 채팅방 참여에 실패했습니다.',
       });
     }
   }
@@ -195,5 +214,48 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   // 연결된 사용자 목록 조회
   getConnectedUsers(meetingId: string): string[] {
     return Array.from(this.connectedUsers.get(meetingId) || []);
+  }
+
+  // 채팅 알림 발송 헬퍼
+  private async sendChatNotification(
+    meetingId: string,
+    senderId: string,
+    message: string,
+  ): Promise<void> {
+    try {
+      // 모임 정보와 참가자 조회
+      const meeting = await this.chatService.getMeetingWithParticipants(meetingId);
+      if (!meeting) {
+        this.logger.warn(`Meeting ${meetingId} not found for chat notification`);
+        return;
+      }
+
+      // 발송자 정보 조회
+      const senderInfo = await this.chatService.getUserProfile(senderId);
+      const senderName = senderInfo?.nickname || '알 수 없는 사용자';
+
+      // 현재 온라인인 사용자 제외 (실시간으로 메시지를 받는 사용자들)
+      const connectedUserIds = this.getConnectedUsers(meetingId);
+      
+      // 오프라인 사용자들에게만 푸시 알림 발송
+      const offlineParticipants = meeting.participantList
+        ?.filter(p => p.userId !== senderId && !connectedUserIds.includes(p.userId))
+        .map(p => p.userId) || [];
+
+      if (offlineParticipants.length > 0) {
+        await this.meetingNotificationHelper.notifyNewChatMessage(
+          offlineParticipants,
+          {
+            id: meeting.id,
+          },
+          senderName,
+          message
+        );
+
+        this.logger.log(`Chat notification sent to ${offlineParticipants.length} offline users`);
+      }
+    } catch (error) {
+      this.logger.error('Failed to send chat notification:', error);
+    }
   }
 }
