@@ -29,10 +29,10 @@ const refreshMeetingsOnly = async () => {
 
     try {
       logger.info('🗑️ 모임 관련 데이터 삭제 중...');
-      
+
       // 외래키 제약 조건 무시 (PostgreSQL)
       await queryRunner.query('SET session_replication_role = replica;');
-      
+
       // 모임 관련 테이블 삭제 (외래키 종속성 순서대로)
       await queryRunner.query('DELETE FROM meeting_chat_reads;');
       await queryRunner.query('DELETE FROM meeting_chats;');
@@ -42,17 +42,21 @@ const refreshMeetingsOnly = async () => {
       await queryRunner.query('DELETE FROM meeting_profile_traits;');
       await queryRunner.query('DELETE FROM meeting_profiles;');
       await queryRunner.query('DELETE FROM meetings;');
-      
+
       // 외래키 제약 조건 복원
       await queryRunner.query('SET session_replication_role = DEFAULT;');
-      
+
       logger.info('✅ 모임 관련 데이터 삭제 완료');
 
       // ID 시퀀스 초기화 (필요한 경우)
       try {
-        await queryRunner.query('ALTER SEQUENCE IF EXISTS meetings_id_seq RESTART WITH 1;');
-        await queryRunner.query('ALTER SEQUENCE IF EXISTS meeting_participants_id_seq RESTART WITH 1;');
-      } catch (error) {
+        await queryRunner.query(
+          'ALTER SEQUENCE IF EXISTS meetings_id_seq RESTART WITH 1;',
+        );
+        await queryRunner.query(
+          'ALTER SEQUENCE IF EXISTS meeting_participants_id_seq RESTART WITH 1;',
+        );
+      } catch {
         // 시퀀스가 없는 경우 무시 (ULID 사용)
         logger.warn('시퀀스 초기화 건너뜀 (ULID 사용)');
       }
@@ -60,13 +64,11 @@ const refreshMeetingsOnly = async () => {
       // 새로운 모임 데이터 생성
       logger.info('📊 새로운 모임 데이터 생성 중...');
       await seedSampleMeetings(AppDataSource, logger);
-      
+
       logger.info('🎉 모임 데이터 초기화 완료!');
-      
     } finally {
       await queryRunner.release();
     }
-
   } catch (error) {
     logger.error('❌ 모임 데이터 초기화 실패:', error);
     throw error;
