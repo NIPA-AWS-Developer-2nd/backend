@@ -372,7 +372,7 @@ export class MeetingService {
   ): void {
     // date 파라미터를 selectedDate로 매핑
     const selectedDate = query.selectedDate || query.date;
-    
+
     // 특정 날짜 선택이 우선순위
     if (selectedDate) {
       // YYYY-MM-DD 형식 날짜를 파싱 (타임존 무시)
@@ -750,7 +750,7 @@ export class MeetingService {
         const likerProfile = await this.dataSource
           .getRepository('user_profile')
           .findOne({ where: { userId } });
-        
+
         const likerName = likerProfile?.nickname || '익명 사용자';
 
         // 호스트에게 알림 발송 (본인이 아닌 경우만)
@@ -760,7 +760,7 @@ export class MeetingService {
             likerName,
             {
               id: meeting.id,
-            }
+            },
           );
         }
       } catch (error) {
@@ -871,16 +871,16 @@ export class MeetingService {
       setImmediate(async () => {
         try {
           const newParticipantCount = currentParticipants + 1;
-          
+
           // 호스트가 아닌 경우에만 호스트에게 알림 발송
           if (!isHost) {
             // 참여자 프로필 조회
             const participantProfile = await this.dataSource
               .getRepository('user_profile')
               .findOne({ where: { userId } });
-            
+
             const participantName = participantProfile?.nickname || '새 참가자';
-            
+
             // 호스트에게 참가자 합류 알림
             await this.meetingNotificationHelper.notifyParticipantJoined(
               meeting.hostUserId,
@@ -889,7 +889,7 @@ export class MeetingService {
                 id: meeting.id,
                 currentParticipants: newParticipantCount,
                 maxParticipants: meeting.maxParticipants,
-              }
+              },
             );
 
             // 모임이 가득 찬 경우 모든 참가자에게 알림
@@ -898,15 +898,15 @@ export class MeetingService {
                 where: { meetingId, status: ParticipantStatus.JOINED },
                 select: ['userId'],
               });
-              
-              const participantIds = allParticipants.map(p => p.userId);
-              
+
+              const participantIds = allParticipants.map((p) => p.userId);
+
               await this.meetingNotificationHelper.notifyMeetingFull(
                 participantIds,
                 {
                   id: meeting.id,
                   maxParticipants: meeting.maxParticipants,
-                }
+                },
               );
             }
           }
@@ -970,7 +970,7 @@ export class MeetingService {
       // 환불/패널티 처리
       const paidAmount = participant.paidAmount || 0;
       let refundAmount = 0;
-      let penaltyAmount = 0;
+      const penaltyAmount = 0;
       let message = '';
 
       if (paidAmount > 0) {

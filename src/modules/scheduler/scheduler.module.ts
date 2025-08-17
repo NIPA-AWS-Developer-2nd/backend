@@ -6,13 +6,20 @@ import { Meeting, MeetingParticipant, MeetingAttendance } from '../../entities';
 import { MissionReview } from '../../entities/mission-review.entity';
 import { PointModule } from '../point/point.module';
 import { NotificationModule } from '../notification/notification.module';
+import { MissionVerificationModule } from '../mission/mission-verification.module';
 
 @Module({
   imports: [
     NestScheduleModule.forRoot(),
-    TypeOrmModule.forFeature([Meeting, MeetingParticipant, MeetingAttendance, MissionReview]),
+    TypeOrmModule.forFeature([
+      Meeting,
+      MeetingParticipant,
+      MeetingAttendance,
+      MissionReview,
+    ]),
     PointModule,
     NotificationModule,
+    MissionVerificationModule,
   ],
   providers: [MeetingSchedulerService],
   exports: [MeetingSchedulerService],

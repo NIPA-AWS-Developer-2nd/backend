@@ -9,9 +9,24 @@ import { Notification } from '../../entities/notification.entity';
 import { Meeting, Mission } from '../../entities';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([PushSubscription, Notification, Meeting, Mission])],
+  imports: [
+    TypeOrmModule.forFeature([
+      PushSubscription,
+      Notification,
+      Meeting,
+      Mission,
+    ]),
+  ],
   controllers: [NotificationController],
-  providers: [NotificationService, PushNotificationService, MeetingNotificationHelper],
-  exports: [NotificationService, PushNotificationService, MeetingNotificationHelper],
+  providers: [
+    NotificationService,
+    PushNotificationService,
+    MeetingNotificationHelper,
+  ],
+  exports: [
+    NotificationService,
+    PushNotificationService,
+    MeetingNotificationHelper,
+  ],
 })
 export class NotificationModule {}

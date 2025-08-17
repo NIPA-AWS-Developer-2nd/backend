@@ -245,7 +245,7 @@ export class ChatService {
   async getUserProfile(userId: string) {
     const result = await this.meetingRepository.query(
       'SELECT nickname FROM user_profiles WHERE "userId" = $1',
-      [userId]
+      [userId],
     );
     return result[0] || null;
   }

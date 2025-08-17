@@ -11,6 +11,13 @@ export interface PresignedUrlResult {
   expiresIn: number;
 }
 
+export interface MissionVerificationPresignedUrlResult
+  extends PresignedUrlResult {
+  metadata: {
+    [key: string]: string;
+  };
+}
+
 @Injectable()
 export class S3Service {
   private s3Client: S3Client;
@@ -180,5 +187,97 @@ export class S3Service {
       this.generatePresignedUrl(folder, expiresIn),
     );
     return Promise.all(urlPromises);
+  }
+
+  /**
+   * 미션 인증 사진용 Presigned URL을 생성합니다
+   *
+   * 미션 인증 사진을 위한 특별한 키 포맷과 메타데이터가 포함된 Presigned URL을 생성합니다.
+   * 키 포맷: mission-uploads/{missionId}/{meetingId}/{userId}/{stepIndex}/{unixTs}-{rand}.jpg
+   *
+   * @param missionId - 미션 ID (ULID)
+   * @param meetingId - 모임 ID (ULID)
+   * @param userId - 사용자 ID (ULID)
+   * @param stepIndex - 미션 스텝 인덱스
+   * @param startTs - 미션 시작 타임스탬프
+   * @param deadlineTs - 미션 마감 타임스탬프
+   * @param expiresIn - URL 만료 시간 (초, 기본값: 300초/5분)
+   * @param contentType - 파일의 Content-Type
+   * @returns Promise<MissionVerificationPresignedUrlResult> - 메타데이터가 포함된 Presigned URL 정보
+   *
+   * @example
+   * ```typescript
+   * const result = await s3Service.generateMissionVerificationPresignedUrl(
+   *   missionId, meetingId, userId, 0, startTs, deadlineTs
+   * );
+   * // result.uploadUrl로 PUT 요청하여 인증 사진 업로드
+   * // result.metadata의 헤더들을 함께 전송
+   * ```
+   */
+  async generateMissionVerificationPresignedUrl(
+    missionId: string,
+    meetingId: string,
+    userId: string,
+    stepIndex: number,
+    startTs: number,
+    deadlineTs: number,
+    expiresIn: number = 300,
+    contentType: string = 'image/jpeg',
+  ): Promise<MissionVerificationPresignedUrlResult> {
+    // 고유 파일명 생성: {unixTs}-{rand}.jpg
+    const unixTs = Math.floor(Date.now() / 1000);
+    const rand = Math.random().toString(36).substring(2, 10); // 8자리 랜덤 문자열
+    const extension = contentType.split('/')[1] || 'jpg';
+    const fileName = `${unixTs}-${rand}.${extension}`;
+
+    // 키 포맷: mission-uploads/{missionId}/{meetingId}/{userId}/{stepIndex}/{fileName}
+    const key = `mission-uploads/${missionId}/${meetingId}/${userId}/${stepIndex}/${fileName}`;
+
+    // 메타데이터 정의
+    const metadata = {
+      'x-amz-meta-id': missionId,
+      'x-amz-meta-meetingid': meetingId,
+      'x-amz-meta-userid': userId,
+      'x-amz-meta-startts': startTs.toString(),
+      'x-amz-meta-deadlinets': deadlineTs.toString(),
+      'x-amz-meta-stepindex': stepIndex.toString(),
+    };
+
+    try {
+      const command = new PutObjectCommand({
+        Bucket: this.bucketName,
+        Key: key,
+        ContentType: contentType,
+        Metadata: {
+          id: missionId,
+          meetingid: meetingId,
+          userid: userId,
+          startts: startTs.toString(),
+          deadlinets: deadlineTs.toString(),
+          stepindex: stepIndex.toString(),
+        },
+      });
+
+      // Presigned URL 생성
+      const uploadUrl = await getSignedUrl(this.s3Client, command, {
+        expiresIn,
+      });
+
+      const publicUrl = this.cloudFrontDomain
+        ? `https://${this.cloudFrontDomain}/${key}`
+        : `https://${this.bucketName}.s3.${this.configService.get('AWS_REGION')}.amazonaws.com/${key}`;
+
+      return {
+        uploadUrl,
+        key,
+        publicUrl,
+        expiresIn,
+        metadata,
+      };
+    } catch (error: unknown) {
+      throw new Error(
+        `미션 인증 사진 Presigned URL 생성 실패: ${error instanceof Error ? error.message : '알 수 없는 오류'}`,
+      );
+    }
   }
 }

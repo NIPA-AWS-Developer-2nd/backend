@@ -1,4 +1,11 @@
-import { IsString, IsOptional, IsDateString, IsEnum, IsObject, IsBoolean } from 'class-validator';
+import {
+  IsString,
+  IsOptional,
+  IsDateString,
+  IsEnum,
+  IsObject,
+  IsBoolean,
+} from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { NotificationType } from '../../../entities/notification.entity';
 
@@ -9,9 +16,9 @@ export class SubscribeToNotificationsDto {
       endpoint: 'https://fcm.googleapis.com/fcm/send/...',
       keys: {
         p256dh: 'BHQ...',
-        auth: 'A1...'
-      }
-    }
+        auth: 'A1...',
+      },
+    },
   })
   @IsObject()
   subscription: {
@@ -24,7 +31,7 @@ export class SubscribeToNotificationsDto {
 
   @ApiPropertyOptional({
     description: 'Browser type',
-    example: 'chrome'
+    example: 'chrome',
   })
   @IsOptional()
   @IsString()
@@ -34,21 +41,21 @@ export class SubscribeToNotificationsDto {
 export class CreateNotificationDto {
   @ApiProperty({
     description: '알림 제목',
-    example: '미팅 알림'
+    example: '미팅 알림',
   })
   @IsString()
   title: string;
 
   @ApiProperty({
     description: '알림 내용',
-    example: '30분 후 미팅이 시작됩니다.'
+    example: '30분 후 미팅이 시작됩니다.',
   })
   @IsString()
   body: string;
 
   @ApiPropertyOptional({
     description: '알림 아이콘 URL',
-    example: 'https://example.com/icon.png'
+    example: 'https://example.com/icon.png',
   })
   @IsOptional()
   @IsString()
@@ -56,7 +63,7 @@ export class CreateNotificationDto {
 
   @ApiPropertyOptional({
     description: '알림 이미지 URL',
-    example: 'https://example.com/image.png'
+    example: 'https://example.com/image.png',
   })
   @IsOptional()
   @IsString()
@@ -64,7 +71,7 @@ export class CreateNotificationDto {
 
   @ApiPropertyOptional({
     description: '알림 배지 URL',
-    example: 'https://example.com/badge.png'
+    example: 'https://example.com/badge.png',
   })
   @IsOptional()
   @IsString()
@@ -72,7 +79,7 @@ export class CreateNotificationDto {
 
   @ApiPropertyOptional({
     description: '클릭 시 이동할 URL',
-    example: 'https://app.example.com/meeting/123'
+    example: 'https://app.example.com/meeting/123',
   })
   @IsOptional()
   @IsString()
@@ -81,7 +88,7 @@ export class CreateNotificationDto {
   @ApiPropertyOptional({
     description: '알림 타입',
     enum: NotificationType,
-    example: NotificationType.MEETING_REMINDER
+    example: NotificationType.MEETING_REMINDER,
   })
   @IsOptional()
   @IsEnum(NotificationType)
@@ -89,7 +96,7 @@ export class CreateNotificationDto {
 
   @ApiPropertyOptional({
     description: '추가 데이터',
-    example: { meetingId: '123', userId: '456' }
+    example: { meetingId: '123', userId: '456' },
   })
   @IsOptional()
   @IsObject()
@@ -97,7 +104,7 @@ export class CreateNotificationDto {
 
   @ApiPropertyOptional({
     description: '예약 발송 시간',
-    example: '2024-01-15T10:30:00Z'
+    example: '2024-01-15T10:30:00Z',
   })
   @IsOptional()
   @IsDateString()
@@ -107,7 +114,7 @@ export class CreateNotificationDto {
 export class SendNotificationToUserDto extends CreateNotificationDto {
   @ApiProperty({
     description: '사용자 ID',
-    example: '01HQXXX123'
+    example: '01HQXXX123',
   })
   @IsString()
   userId: string;
@@ -116,7 +123,7 @@ export class SendNotificationToUserDto extends CreateNotificationDto {
 export class SendBulkNotificationDto extends CreateNotificationDto {
   @ApiProperty({
     description: '사용자 ID 목록',
-    example: ['01HQXXX123', '01HQXXX456']
+    example: ['01HQXXX123', '01HQXXX456'],
   })
   @IsString({ each: true })
   userIds: string[];
@@ -125,7 +132,7 @@ export class SendBulkNotificationDto extends CreateNotificationDto {
 export class UnsubscribeDto {
   @ApiProperty({
     description: 'Push subscription endpoint',
-    example: 'https://fcm.googleapis.com/fcm/send/...'
+    example: 'https://fcm.googleapis.com/fcm/send/...',
   })
   @IsString()
   endpoint: string;

@@ -116,12 +116,16 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         .to(`meeting:${data.meetingId}`)
         .emit('new_message', chatMessage);
 
-      this.logger.log(`📤 Message sent by ${userId} to meeting ${data.meetingId}: "${data.message}"`);
+      this.logger.log(
+        `📤 Message sent by ${userId} to meeting ${data.meetingId}: "${data.message}"`,
+      );
 
       // 채팅 알림 발송 (비동기)
       setImmediate(async () => {
         try {
-          this.logger.log(`🔔 Starting chat notification process for meeting ${data.meetingId}`);
+          this.logger.log(
+            `🔔 Starting chat notification process for meeting ${data.meetingId}`,
+          );
           await this.sendChatNotification(data.meetingId, userId, data.message);
         } catch (error) {
           this.logger.error('Failed to send chat notification:', error);
@@ -225,14 +229,21 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   ): Promise<void> {
     try {
       // 모임 정보와 참가자 조회
-      const meeting = await this.chatService.getMeetingWithParticipants(meetingId);
+      const meeting =
+        await this.chatService.getMeetingWithParticipants(meetingId);
       if (!meeting) {
-        this.logger.warn(`Meeting ${meetingId} not found for chat notification`);
+        this.logger.warn(
+          `Meeting ${meetingId} not found for chat notification`,
+        );
         return;
       }
 
-      this.logger.log(`🔍 Meeting participants: ${meeting?.participantList?.length || 0}`);
-      this.logger.log(`🔍 Participant list: ${JSON.stringify(meeting?.participantList?.map(p => ({ userId: p.userId, nickname: p.user?.profile?.nickname })) || [])}`);
+      this.logger.log(
+        `🔍 Meeting participants: ${meeting?.participantList?.length || 0}`,
+      );
+      this.logger.log(
+        `🔍 Participant list: ${JSON.stringify(meeting?.participantList?.map((p) => ({ userId: p.userId, nickname: p.user?.profile?.nickname })) || [])}`,
+      );
 
       // 발송자 정보 조회
       const senderInfo = await this.chatService.getUserProfile(senderId);
@@ -241,14 +252,22 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
       // 현재 채팅 소켓에 연결된 사용자 제외 (실시간으로 메시지를 받는 사용자들)
       const connectedUserIds = this.getConnectedUsers(meetingId);
-      this.logger.log(`🔍 Connected users: ${connectedUserIds.length} - ${JSON.stringify(connectedUserIds)}`);
-      
-      // 채팅 소켓 오프라인 사용자들에게만 푸시 알림 발송
-      const offlineParticipants = meeting.participantList
-        ?.filter(p => p.userId !== senderId && !connectedUserIds.includes(p.userId))
-        .map(p => p.userId) || [];
+      this.logger.log(
+        `🔍 Connected users: ${connectedUserIds.length} - ${JSON.stringify(connectedUserIds)}`,
+      );
 
-      this.logger.log(`🔍 Offline participants: ${offlineParticipants.length} - ${JSON.stringify(offlineParticipants)}`);
+      // 채팅 소켓 오프라인 사용자들에게만 푸시 알림 발송
+      const offlineParticipants =
+        meeting.participantList
+          ?.filter(
+            (p) =>
+              p.userId !== senderId && !connectedUserIds.includes(p.userId),
+          )
+          .map((p) => p.userId) || [];
+
+      this.logger.log(
+        `🔍 Offline participants: ${offlineParticipants.length} - ${JSON.stringify(offlineParticipants)}`,
+      );
 
       if (offlineParticipants.length > 0) {
         await this.meetingNotificationHelper.notifyNewChatMessage(
@@ -257,12 +276,16 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
             id: meeting.id,
           },
           senderName,
-          message
+          message,
         );
 
-        this.logger.log(`✅ Chat notification sent to ${offlineParticipants.length} offline users`);
+        this.logger.log(
+          `✅ Chat notification sent to ${offlineParticipants.length} offline users`,
+        );
       } else {
-        this.logger.log(`ℹ️ No offline participants to notify for meeting ${meetingId} (all users are online)`);
+        this.logger.log(
+          `ℹ️ No offline participants to notify for meeting ${meetingId} (all users are online)`,
+        );
       }
     } catch (error) {
       this.logger.error('Failed to send chat notification:', error);

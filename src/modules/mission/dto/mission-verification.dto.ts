@@ -1,44 +1,65 @@
-import { IsString, IsOptional, IsNumber, Min, Max, IsUrl } from 'class-validator';
+import {
+  IsString,
+  IsOptional,
+  IsNumber,
+  Min,
+  Max,
+  IsUrl,
+  IsArray,
+} from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class VerifyMissionDto {
-  @ApiProperty({ 
+  @ApiProperty({
     description: '미션 사진 URL (S3 업로드 후)',
-    example: 'https://bucket.s3.amazonaws.com/mission-photos/photo123.jpg'
+    example: 'https://bucket.s3.amazonaws.com/mission-photos/photo123.jpg',
   })
   @IsString()
   @IsUrl()
   photoUrl: string;
 
-  @ApiProperty({ 
+  @ApiProperty({
     description: '모임 ID',
-    example: '01HQXXX...'
+    example: '01HQXXX...',
+  })
+  @IsString()
+  meetingId: string;
+}
+
+export class UploadVerificationPhotoDto {
+  @ApiProperty({
+    description: '모임 ID',
+    example: '01HQXXX...',
   })
   @IsString()
   meetingId: string;
 }
 
 export class SubmitMissionDto {
-  @ApiProperty({ 
+  @ApiProperty({
     description: '모임 ID',
-    example: '01HQXXX...'
+    example: '01HQXXX...',
   })
   @IsString()
   meetingId: string;
 
-  @ApiProperty({ 
-    description: '미션 사진 URL',
-    example: 'https://bucket.s3.amazonaws.com/mission-photos/photo123.jpg'
+  @ApiProperty({
+    description: '미션 사진 URL 배열',
+    example: [
+      'https://bucket.s3.amazonaws.com/mission-photos/photo123.jpg',
+      'https://bucket.s3.amazonaws.com/mission-photos/photo456.jpg',
+    ],
   })
-  @IsString()
-  @IsUrl()
-  photoUrl: string;
+  @IsArray()
+  @IsString({ each: true })
+  @IsUrl({}, { each: true })
+  photoUrls: string[];
 
-  @ApiPropertyOptional({ 
+  @ApiPropertyOptional({
     description: '별점 (1-5점)',
     example: 4,
     minimum: 1,
-    maximum: 5
+    maximum: 5,
   })
   @IsOptional()
   @IsNumber()
@@ -46,9 +67,9 @@ export class SubmitMissionDto {
   @Max(5)
   rating?: number;
 
-  @ApiPropertyOptional({ 
+  @ApiPropertyOptional({
     description: '후기 텍스트',
-    example: '정말 즐거운 미션이었습니다!'
+    example: '정말 즐거운 미션이었습니다!',
   })
   @IsOptional()
   @IsString()

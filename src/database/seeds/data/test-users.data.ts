@@ -37,12 +37,16 @@ export const seedTestUsers = async (
   }
 
   // 호스트용 관심사와 해시태그 6개씩 선택
-  const hostInterests = allInterests.slice(0, 6).map(interest => interest.id);
-  const hostHashtags = allHashtags.slice(0, 6).map(hashtag => hashtag.id);
+  const hostInterests = allInterests.slice(0, 6).map((interest) => interest.id);
+  const hostHashtags = allHashtags.slice(0, 6).map((hashtag) => hashtag.id);
 
   // 참가자용 관심사와 해시태그 6개씩 선택 (다른 조합)
-  const participantInterests = allInterests.slice(3, 9).map(interest => interest.id);
-  const participantHashtags = allHashtags.slice(3, 9).map(hashtag => hashtag.id);
+  const participantInterests = allInterests
+    .slice(3, 9)
+    .map((interest) => interest.id);
+  const participantHashtags = allHashtags
+    .slice(3, 9)
+    .map((hashtag) => hashtag.id);
 
   const hostUserExists = await userRepository.findOne({
     where: { phoneNumber: '01012345678' },
@@ -65,8 +69,8 @@ export const seedTestUsers = async (
       userId: hostUserId,
       nickname: '무서운고구마',
       profileImageUrl:
-        'https://api.dicebear.com/7.x/avataaars/svg?seed=모임리더민준',
-      bio: '안녕하세요! 새로운 사람들과 함께 재미있는 경험을 만들어가는 걸 좋아해요 😊 적극적으로 참여하는 분들과 함께 미션을 수행하고 싶어요!',
+        'https://nullisdefined.s3.ap-northeast-2.amazonaws.com/images/0d9bbb3880a7aaea39b4276d129300f6.png',
+      bio: '새로운 사람들과 함께 재미있는 경험을 만들어가는 걸 좋아해요! 😊',
       birthYear: 1995,
       gender: Gender.MALE,
       mbti: 'ENFJ',
@@ -107,11 +111,11 @@ export const seedTestUsers = async (
       userId: participantUserId,
       nickname: '겁없는감자',
       profileImageUrl:
-        'https://api.dicebear.com/7.x/avataaars/svg?seed=겁없는감자',
-      bio: '새로운 경험과 사람들을 만나는 걸 좋아해요! 맛집 탐방과 문화체험에 관심이 많습니다. 함께 즐거운 시간 만들어요~',
+        'https://nullisdefined.s3.ap-northeast-2.amazonaws.com/images/88e4d0b5402be0ed2aef01d2a34b67d9.png',
+      bio: '새로운 경험과 사람들을 만나는 걸 좋아해요! 함께 즐거운 시간 만들어요~',
       birthYear: 1998,
       gender: Gender.FEMALE,
-      mbti: 'ENFP',
+      mbti: 'ISFP',
       interestIds: participantInterests,
       hashtagIds: participantHashtags,
       districtId: songpaDistrict.id,
@@ -167,11 +171,11 @@ export const seedTestUsers = async (
     const demoInterests = allInterests
       .sort(() => 0.5 - Math.random())
       .slice(0, 6)
-      .map(interest => interest.id);
+      .map((interest) => interest.id);
     const demoHashtags = allHashtags
       .sort(() => 0.5 - Math.random())
       .slice(0, 6)
-      .map(hashtag => hashtag.id);
+      .map((hashtag) => hashtag.id);
 
     const user = userRepository.create({
       id: userId,

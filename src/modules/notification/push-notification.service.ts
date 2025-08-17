@@ -3,7 +3,10 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, LessThanOrEqual } from 'typeorm';
 import * as webpush from 'web-push';
 import { PushSubscription } from '../../entities/push-subscription.entity';
-import { Notification, NotificationStatus } from '../../entities/notification.entity';
+import {
+  Notification,
+  NotificationStatus,
+} from '../../entities/notification.entity';
 import { PushSubscriptionData, NotificationPayload } from './types';
 
 @Injectable()
@@ -22,12 +25,14 @@ export class PushNotificationService {
   private initializeWebPush() {
     const vapidPublicKey = process.env.VAPID_PUBLIC_KEY;
     const vapidPrivateKey = process.env.VAPID_PRIVATE_KEY;
-    const vapidSubject = process.env.VAPID_SUBJECT?.startsWith('mailto:') 
-      ? process.env.VAPID_SUBJECT 
+    const vapidSubject = process.env.VAPID_SUBJECT?.startsWith('mailto:')
+      ? process.env.VAPID_SUBJECT
       : `mailto:${process.env.VAPID_SUBJECT || 'your-email@example.com'}`;
 
     if (!vapidPublicKey || !vapidPrivateKey) {
-      this.logger.warn('VAPID keys not configured. Web push notifications will not work.');
+      this.logger.warn(
+        'VAPID keys not configured. Web push notifications will not work.',
+      );
       return;
     }
 
@@ -42,7 +47,7 @@ export class PushNotificationService {
     // 기존 활성 구독들을 모두 비활성화 (사용자당 하나의 활성 구독만 유지)
     await this.pushSubscriptionRepository.update(
       { userId, isActive: true },
-      { isActive: false }
+      { isActive: false },
     );
 
     // 동일한 endpoint가 있는지 확인
@@ -89,7 +94,7 @@ export class PushNotificationService {
     payload: NotificationPayload,
   ): Promise<boolean> {
     const subscriptions = await this.getUserSubscriptions(userId);
-    
+
     if (subscriptions.length === 0) {
       this.logger.warn(`No active subscriptions found for user ${userId}`);
       return false;
@@ -146,12 +151,11 @@ export class PushNotificationService {
     };
 
     try {
-      await webpush.sendNotification(
-        pushSubscription,
-        JSON.stringify(payload),
+      await webpush.sendNotification(pushSubscription, JSON.stringify(payload));
+
+      this.logger.debug(
+        `Notification sent successfully to ${subscription.endpoint}`,
       );
-      
-      this.logger.debug(`Notification sent successfully to ${subscription.endpoint}`);
     } catch (error) {
       this.logger.error(
         `Failed to send notification to ${subscription.endpoint}:`,
@@ -159,8 +163,13 @@ export class PushNotificationService {
       );
 
       if (error.statusCode === 410) {
-        await this.removeSubscription(subscription.userId, subscription.endpoint);
-        this.logger.log(`Removed invalid subscription: ${subscription.endpoint}`);
+        await this.removeSubscription(
+          subscription.userId,
+          subscription.endpoint,
+        );
+        this.logger.log(
+          `Removed invalid subscription: ${subscription.endpoint}`,
+        );
       }
 
       throw error;
@@ -213,7 +222,9 @@ export class PushNotificationService {
           payload,
         );
 
-        notification.status = success ? NotificationStatus.SENT : NotificationStatus.FAILED;
+        notification.status = success
+          ? NotificationStatus.SENT
+          : NotificationStatus.FAILED;
         notification.sentAt = new Date();
         await this.notificationRepository.save(notification);
       } catch (error) {

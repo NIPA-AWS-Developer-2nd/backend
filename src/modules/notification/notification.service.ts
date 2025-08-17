@@ -1,7 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Notification, NotificationType, NotificationStatus } from '../../entities/notification.entity';
+import {
+  Notification,
+  NotificationType,
+  NotificationStatus,
+} from '../../entities/notification.entity';
 import { PushNotificationService } from './push-notification.service';
 import {
   CreateNotificationRequest,
@@ -59,7 +63,9 @@ export class NotificationService {
         payload,
       );
 
-      notification.status = sent ? NotificationStatus.SENT : NotificationStatus.FAILED;
+      notification.status = sent
+        ? NotificationStatus.SENT
+        : NotificationStatus.FAILED;
       notification.sentAt = sent ? new Date() : null;
       await this.notificationRepository.save(notification);
 
@@ -81,7 +87,10 @@ export class NotificationService {
     userIds: string[],
     payload: NotificationPayload,
     type: NotificationType = NotificationType.SYSTEM_NOTICE,
-  ): Promise<{ notifications: Notification[]; results: { success: number; failed: number } }> {
+  ): Promise<{
+    notifications: Notification[];
+    results: { success: number; failed: number };
+  }> {
     const notifications = await Promise.all(
       userIds.map((userId) =>
         this.createNotification({
@@ -98,14 +107,18 @@ export class NotificationService {
       ),
     );
 
-    const results = await this.pushNotificationService.sendNotificationToMultipleUsers(
-      userIds,
-      payload,
-    );
+    const results =
+      await this.pushNotificationService.sendNotificationToMultipleUsers(
+        userIds,
+        payload,
+      );
 
     await Promise.all(
       notifications.map(async (notification, index) => {
-        notification.status = index < results.success ? NotificationStatus.SENT : NotificationStatus.FAILED;
+        notification.status =
+          index < results.success
+            ? NotificationStatus.SENT
+            : NotificationStatus.FAILED;
         notification.sentAt = index < results.success ? new Date() : null;
         return this.notificationRepository.save(notification);
       }),
@@ -119,22 +132,25 @@ export class NotificationService {
     page = 1,
     limit = 20,
   ): Promise<{ notifications: NotificationResponse[]; total: number }> {
-    const [notifications, total] = await this.notificationRepository.findAndCount({
-      where: { userId },
-      order: { createdAt: 'DESC' },
-      skip: (page - 1) * limit,
-      take: limit,
-    });
+    const [notifications, total] =
+      await this.notificationRepository.findAndCount({
+        where: { userId },
+        order: { createdAt: 'DESC' },
+        skip: (page - 1) * limit,
+        take: limit,
+      });
 
-    const notificationResponses: NotificationResponse[] = notifications.map((notification) => ({
-      id: notification.id,
-      title: notification.title,
-      body: notification.body,
-      type: notification.type,
-      status: notification.status,
-      createdAt: notification.createdAt,
-      sentAt: notification.sentAt,
-    }));
+    const notificationResponses: NotificationResponse[] = notifications.map(
+      (notification) => ({
+        id: notification.id,
+        title: notification.title,
+        body: notification.body,
+        type: notification.type,
+        status: notification.status,
+        createdAt: notification.createdAt,
+        sentAt: notification.sentAt,
+      }),
+    );
 
     return { notifications: notificationResponses, total };
   }
@@ -143,14 +159,17 @@ export class NotificationService {
     const notification = await this.notificationRepository.findOne({
       where: { id: notificationId },
     });
-    
+
     if (notification) {
       notification.data = { ...notification.data, read: true };
       await this.notificationRepository.save(notification);
     }
   }
 
-  async deleteNotification(notificationId: string, userId: string): Promise<void> {
+  async deleteNotification(
+    notificationId: string,
+    userId: string,
+  ): Promise<void> {
     await this.notificationRepository.delete({
       id: notificationId,
       userId,
