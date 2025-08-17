@@ -44,6 +44,15 @@ export class MissionReview {
   })
   aiVerificationStatus: VerificationStatus;
 
+  @Column({ type: 'integer', nullable: true })
+  aiConfidence: number | null; // AI 신뢰도 (0-100)
+
+  @Column({ type: 'text', nullable: true })
+  aiReasoning: string | null; // AI 검증 결과 설명
+
+  @Column({ type: 'varchar', length: 255, array: true, nullable: true })
+  aiDetectedElements: string[] | null; // AI가 감지한 요소들
+
   @Column({ type: 'integer', default: 0 })
   earnedPoints: number;
 

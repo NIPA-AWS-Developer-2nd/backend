@@ -132,6 +132,13 @@ export class MissionVerificationController {
       data: {
         status: 'approved',
         verifiedAt: '2024-01-01T10:00:00Z',
+        photoUrls: ['https://example.com/photo1.jpg'],
+        photoUrl: 'https://example.com/photo1.jpg',
+        rating: 5,
+        reviewText: '정말 좋은 경험이었습니다!',
+        confidence: 95,
+        reasoning: '사진에 사람이 명확히 보이고 미션 요구사항을 충족합니다.',
+        detectedElements: ['사람', '음식', '식당'],
       },
     },
   })
