@@ -34,3 +34,4 @@ export {
 } from './meeting-attendance.entity';
 export { MeetingChat } from './meeting-chat.entity';
 export { MeetingChatRead } from './meeting-chat-read.entity';
+export { GiftCard, GiftCardCategory } from './gift-card.entity';

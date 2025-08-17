@@ -41,5 +41,4 @@ export class MeetingProfile {
   @OneToOne(() => Meeting, (meeting) => meeting.profile)
   @JoinColumn({ name: 'meetingId' })
   meeting?: Meeting;
-
 }

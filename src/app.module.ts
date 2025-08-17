@@ -14,6 +14,7 @@ import { LevelModule } from './modules/level/level.module';
 import { UserInterestsModule } from './modules/user-interests/user-interests.module';
 import { UserHashtagsModule } from './modules/user-hashtags/user-hashtags.module';
 import { MissionModule } from './modules/mission/mission.module';
+import { MissionVerificationModule } from './modules/mission/mission-verification.module';
 import { MeetingModule } from './modules/meeting/meeting.module';
 import { HomeModule } from './modules/home/home.module';
 import { LocationModule } from './modules/location/location.module';
@@ -24,6 +25,7 @@ import { SchedulerModule } from './modules/scheduler/scheduler.module';
 import { PointModule } from './modules/point/point.module';
 import { AttendanceModule } from './modules/attendance/attendance.module';
 import { ChatModule } from './modules/chat/chat.module';
+import { GiftCardModule } from './modules/gift-card/gift-card.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 
@@ -100,6 +102,7 @@ import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
     UserInterestsModule,
     UserHashtagsModule,
     MissionModule,
+    MissionVerificationModule,
     MeetingModule,
     HomeModule,
     LocationModule,
@@ -110,6 +113,7 @@ import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
     PointModule,
     AttendanceModule,
     ChatModule,
+    GiftCardModule,
   ],
   controllers: [AppController],
   providers: [

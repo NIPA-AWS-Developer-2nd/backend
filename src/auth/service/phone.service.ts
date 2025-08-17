@@ -6,6 +6,7 @@ import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
 import { Logger } from 'winston';
 import { User, UserStatus, UserProfile } from '../../entities';
 import { TIME_MULTIPLIERS } from '../../common/constants/time.constants';
+import { SmsService } from '../../common/services';
 
 export interface PhoneVerificationResult {
   success: boolean;
@@ -34,10 +35,11 @@ export class PhoneService {
     @InjectRepository(UserProfile)
     private userProfileRepository: Repository<UserProfile>,
     @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger,
+    private smsService: SmsService,
   ) {}
 
   // 인증 코드 발송
-  sendVerificationCode(phoneNumber: string): PhoneVerificationResult {
+  async sendVerificationCode(phoneNumber: string): Promise<PhoneVerificationResult> {
     // 전화번호 형식 검증
     if (!/^\d{11}$/.test(phoneNumber)) {
       throw new BadRequestException('올바른 전화번호 형식이 아닙니다.');
@@ -51,21 +53,40 @@ export class PhoneService {
     // 5분 후 만료
     const expiresAt = new Date(Date.now() + 5 * TIME_MULTIPLIERS.m);
 
+    // TODO: Cool SMS를 통한 실제 SMS 발송 (현재 주석처리)
+    // const smsResult = await this.smsService.sendVerificationCode(
+    //   phoneNumber,
+    //   verificationCode,
+    // );
+
+    // if (!smsResult.success) {
+    //   this.logger.error('SMS 발송 실패', {
+    //     phoneNumber,
+    //     error: smsResult.message,
+    //     action: 'send_verification_code_failed',
+    //   });
+    //   throw new BadRequestException('SMS 발송에 실패했습니다. 잠시 후 다시 시도해주세요.');
+    // }
+
+    // 개발용: 콘솔에 인증코드 출력
+    this.logger.info(`[개발용] SMS 인증코드: ${verificationCode}`, {
+      phoneNumber,
+      verificationCode,
+      action: 'development_sms_code',
+    });
+
     // 메모리에 저장
-    // TODO: Redis 사용
     this.verificationCodes.set(phoneNumber, {
       code: verificationCode,
       expiresAt,
     });
 
-    // 실제 SMS 발송 로직 (여기서는 로그로 대체)
-    this.logger.info(`[SMS] ${phoneNumber}: 인증코드 ${verificationCode}`, {
+    this.logger.info('인증 코드 메모리 저장 완료', {
       phoneNumber,
-      verificationCode,
-      action: 'send_verification_code',
+      code: verificationCode,
+      expiresAt,
+      action: 'verification_code_stored',
     });
-
-    // TODO: 실제 SMS 서비스 연동
 
     return {
       success: true,
@@ -78,9 +99,23 @@ export class PhoneService {
     phoneNumber: string,
     code: string,
   ): Promise<PhoneVerificationResult> {
+    this.logger.info('인증 코드 검증 시작', {
+      phoneNumber,
+      inputCode: code,
+      storedCodesCount: this.verificationCodes.size,
+      storedKeys: Array.from(this.verificationCodes.keys()),
+      action: 'verify_code_start',
+    });
+
     const stored = this.verificationCodes.get(phoneNumber);
 
     if (!stored) {
+      this.logger.warn('저장된 인증 코드 없음', {
+        phoneNumber,
+        inputCode: code,
+        allStoredCodes: Array.from(this.verificationCodes.entries()),
+        action: 'verification_code_not_found',
+      });
       throw new BadRequestException('인증 코드가 발송되지 않았습니다.');
     }
 

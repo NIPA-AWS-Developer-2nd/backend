@@ -109,7 +109,9 @@ export class HomeController {
     @Query() query: GetHomeDataDto,
     @Request() req: { user: { id: string } },
   ) {
-    this.logger.log(`🏠 HOME API CALLED: Getting home data for user ${req.user.id} with limit ${query.limit}`);
+    this.logger.log(
+      `🏠 HOME API CALLED: Getting home data for user ${req.user.id} with limit ${query.limit}`,
+    );
 
     const data = await this.homeService.getHomeData(req.user.id, query.limit);
 

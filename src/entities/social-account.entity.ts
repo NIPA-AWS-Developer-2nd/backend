@@ -38,7 +38,7 @@ export class SocialAccount {
   @Column({ type: 'varchar', length: 255, nullable: true })
   email: string;
 
-  @Column({ type: 'varchar', length: 512, nullable: true })
+  @Column({ type: 'text', nullable: true })
   profileImageUrl: string;
 
   @Column({ type: 'text' })

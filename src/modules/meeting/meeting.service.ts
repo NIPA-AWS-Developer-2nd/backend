@@ -27,6 +27,7 @@ import {
 } from './dto/meeting-response.dto';
 import { MeetingSchedulerService } from '../scheduler/meeting-scheduler.service';
 import { PointService } from '../point/point.service';
+import { MeetingNotificationHelper } from '../notification/helpers/meeting-notification.helper';
 
 @Injectable()
 export class MeetingService {
@@ -48,6 +49,7 @@ export class MeetingService {
     private readonly dataSource: DataSource,
     private readonly schedulerService: MeetingSchedulerService,
     private readonly pointService: PointService,
+    private readonly meetingNotificationHelper: MeetingNotificationHelper,
   ) {}
 
   async getMeetings(
@@ -91,7 +93,7 @@ export class MeetingService {
           })
           .orderBy('participant.createdAt', 'ASC')
           .getMany();
-        
+
         // 리스트용으로는 최대 4명만
         const participants = allParticipants.slice(0, 4);
 
@@ -104,7 +106,13 @@ export class MeetingService {
           isLiked = !!likeExists;
         }
 
-        return this.mapMeetingToDto(meeting, participantCount, allParticipants, isLiked, userId);
+        return this.mapMeetingToDto(
+          meeting,
+          participantCount,
+          allParticipants,
+          isLiked,
+          userId,
+        );
       }),
     );
 
@@ -362,10 +370,13 @@ export class MeetingService {
     queryBuilder: SelectQueryBuilder<Meeting>,
     query: GetMeetingsQueryDto,
   ): void {
+    // date 파라미터를 selectedDate로 매핑
+    const selectedDate = query.selectedDate || query.date;
+    
     // 특정 날짜 선택이 우선순위
-    if (query.selectedDate) {
+    if (selectedDate) {
       // YYYY-MM-DD 형식 날짜를 파싱 (타임존 무시)
-      const dateParts = query.selectedDate.split('-');
+      const dateParts = selectedDate.split('-');
       if (dateParts.length === 3) {
         const year = parseInt(dateParts[0], 10);
         const month = parseInt(dateParts[1], 10) - 1; // month는 0-based
@@ -484,9 +495,10 @@ export class MeetingService {
       userId,
     );
 
-    // 참여자 DTO 매핑
-    const participantDtos: MeetingParticipantDto[] = participants.map(
-      (participant) => ({
+    // 참여자 DTO 매핑 (JOINED 상태만)
+    const participantDtos: MeetingParticipantDto[] = participants
+      .filter((participant) => participant.status === ParticipantStatus.JOINED)
+      .map((participant) => ({
         userId: participant.userId,
         nickname: participant.user?.profile?.nickname || '알 수 없음',
         profileImageUrl: participant.user?.profile?.profileImageUrl || null,
@@ -498,8 +510,7 @@ export class MeetingService {
         bio: participant.user?.profile?.bio || undefined,
         joinedAt: participant.joinedAt.toISOString(),
         createdAt: participant.createdAt.toISOString(),
-      }),
-    );
+      }));
 
     // 사용자가 로그인된 경우 좋아요 상태 확인
     let isLiked = false;
@@ -511,7 +522,13 @@ export class MeetingService {
     }
 
     // 기본 MeetingDto 생성
-    const baseMeetingDto = this.mapMeetingToDto(meeting, currentParticipants, participants, isLiked, userId);
+    const baseMeetingDto = this.mapMeetingToDto(
+      meeting,
+      currentParticipants,
+      participants,
+      isLiked,
+      userId,
+    );
 
     // MeetingDetailDto로 확장
     return {
@@ -570,44 +587,52 @@ export class MeetingService {
   ): MeetingDto {
     // 실시간 상태 계산
     const currentStatus = this.schedulerService.calculateMeetingStatus(meeting);
-    
+
     // 사용자 참여 여부 확인
     let meJoined = false;
     let isHost = false;
-    
+
     if (userId) {
       isHost = meeting.hostUserId === userId;
       if (!isHost && participants) {
-        meJoined = participants.some(p => p.userId === userId && p.status === ParticipantStatus.JOINED);
+        meJoined = participants.some(
+          (p) => p.userId === userId && p.status === ParticipantStatus.JOINED,
+        );
       } else {
         meJoined = isHost;
       }
     }
 
     // 참여자 DTO 목록 생성 (리스트용으로 최대 4명만)
-    const participantDtos: MeetingParticipantDto[] = participants ? participants.slice(0, 4).map(
-      (participant) => ({
-        userId: participant.userId,
-        nickname: participant.user?.profile?.nickname || '알 수 없음',
-        profileImageUrl: participant.user?.profile?.profileImageUrl || null,
-        points: participant.user?.profile?.points || 0,
-        level: 1,
-        status: participant.status,
-        isHost: participant.isHost,
-        mbti: participant.user?.profile?.mbti || undefined,
-        bio: participant.user?.profile?.bio || undefined,
-        joinedAt: participant.joinedAt?.toISOString() || participant.createdAt.toISOString(),
-        createdAt: participant.createdAt.toISOString(),
-      }),
-    ) : [];
-    
+    const participantDtos: MeetingParticipantDto[] = participants
+      ? participants.slice(0, 4).map((participant) => ({
+          userId: participant.userId,
+          nickname: participant.user?.profile?.nickname || '알 수 없음',
+          profileImageUrl: participant.user?.profile?.profileImageUrl || null,
+          points: participant.user?.profile?.points || 0,
+          level: 1,
+          status: participant.status,
+          isHost: participant.isHost,
+          mbti: participant.user?.profile?.mbti || undefined,
+          bio: participant.user?.profile?.bio || undefined,
+          joinedAt:
+            participant.joinedAt?.toISOString() ||
+            participant.createdAt.toISOString(),
+          createdAt: participant.createdAt.toISOString(),
+        }))
+      : [];
+
     return {
       id: meeting.id,
       missionId: meeting.missionId,
       hostUserId: meeting.hostUserId,
       status: currentStatus,
-      recruitUntil: meeting.recruitUntil ? meeting.recruitUntil.toISOString() : null,
-      scheduledAt: meeting.scheduledAt ? meeting.scheduledAt.toISOString() : null,
+      recruitUntil: meeting.recruitUntil
+        ? meeting.recruitUntil.toISOString()
+        : null,
+      scheduledAt: meeting.scheduledAt
+        ? meeting.scheduledAt.toISOString()
+        : null,
       qrCodeToken: meeting.qrCodeToken || undefined,
       qrGeneratedAt: meeting.qrGeneratedAt?.toISOString() || undefined,
       createdAt: meeting.createdAt.toISOString(),
@@ -718,6 +743,31 @@ export class MeetingService {
       await manager.save(meeting);
     });
 
+    // 좋아요 알림 발송 (비동기)
+    setImmediate(async () => {
+      try {
+        // 좋아요를 누른 사용자 프로필 조회
+        const likerProfile = await this.dataSource
+          .getRepository('user_profile')
+          .findOne({ where: { userId } });
+        
+        const likerName = likerProfile?.nickname || '익명 사용자';
+
+        // 호스트에게 알림 발송 (본인이 아닌 경우만)
+        if (meeting.hostUserId !== userId) {
+          await this.meetingNotificationHelper.notifyMeetingLiked(
+            meeting.hostUserId,
+            likerName,
+            {
+              id: meeting.id,
+            }
+          );
+        }
+      } catch (error) {
+        this.logger.error('Failed to send meeting liked notification:', error);
+      }
+    });
+
     return {
       likesCount: meeting.likesCount,
       isLiked: true,
@@ -753,12 +803,17 @@ export class MeetingService {
       where: { userId, meetingId },
     });
 
-    if (!this.canUserJoin(meeting, currentParticipants, userParticipation, userId)) {
+    if (
+      !this.canUserJoin(meeting, currentParticipants, userParticipation, userId)
+    ) {
       throw new BadRequestException('모임에 참여할 수 없습니다.');
     }
 
     // 이미 참여 중인지 확인
-    if (userParticipation && userParticipation.status === ParticipantStatus.JOINED) {
+    if (
+      userParticipation &&
+      userParticipation.status === ParticipantStatus.JOINED
+    ) {
       throw new BadRequestException('이미 참여 중인 모임입니다.');
     }
 
@@ -769,7 +824,7 @@ export class MeetingService {
     return this.dataSource.transaction(async (manager) => {
       // 참여자 정보 생성 또는 업데이트
       let participant: MeetingParticipant;
-      
+
       if (userParticipation) {
         // 기존 참여자 상태 업데이트
         participant = userParticipation;
@@ -789,12 +844,13 @@ export class MeetingService {
       // 호스트가 아닌 경우 포인트 결제
       if (!isHost && requiredPoints > 0) {
         try {
-          const paymentTransaction = await this.pointService.chargePointsForMeeting(
-            userId,
-            meetingId,
-            requiredPoints,
-          );
-          
+          const paymentTransaction =
+            await this.pointService.chargePointsForMeeting(
+              userId,
+              meetingId,
+              requiredPoints,
+            );
+
           participant.pointsPaid = true;
           participant.paidAmount = requiredPoints;
           participant.paymentTransactionId = paymentTransaction.id;
@@ -811,10 +867,58 @@ export class MeetingService {
 
       await manager.save(participant);
 
+      // 참여 완료 후 알림 발송 (트랜잭션 외부에서 실행)
+      setImmediate(async () => {
+        try {
+          const newParticipantCount = currentParticipants + 1;
+          
+          // 호스트가 아닌 경우에만 호스트에게 알림 발송
+          if (!isHost) {
+            // 참여자 프로필 조회
+            const participantProfile = await this.dataSource
+              .getRepository('user_profile')
+              .findOne({ where: { userId } });
+            
+            const participantName = participantProfile?.nickname || '새 참가자';
+            
+            // 호스트에게 참가자 합류 알림
+            await this.meetingNotificationHelper.notifyParticipantJoined(
+              meeting.hostUserId,
+              participantName,
+              {
+                id: meeting.id,
+                currentParticipants: newParticipantCount,
+                maxParticipants: meeting.maxParticipants,
+              }
+            );
+
+            // 모임이 가득 찬 경우 모든 참가자에게 알림
+            if (newParticipantCount === meeting.maxParticipants) {
+              const allParticipants = await this.participantRepository.find({
+                where: { meetingId, status: ParticipantStatus.JOINED },
+                select: ['userId'],
+              });
+              
+              const participantIds = allParticipants.map(p => p.userId);
+              
+              await this.meetingNotificationHelper.notifyMeetingFull(
+                participantIds,
+                {
+                  id: meeting.id,
+                  maxParticipants: meeting.maxParticipants,
+                }
+              );
+            }
+          }
+        } catch (error) {
+          this.logger.error('Failed to send participant notification:', error);
+        }
+      });
+
       return {
         success: true,
-        message: isHost 
-          ? '모임에 참여했습니다.' 
+        message: isHost
+          ? '모임에 참여했습니다.'
           : `모임에 참여했습니다. ${requiredPoints}P가 차감되었습니다.`,
       };
     });
@@ -839,7 +943,9 @@ export class MeetingService {
 
     // 호스트는 탈퇴 불가
     if (meeting.hostUserId === userId) {
-      throw new BadRequestException('호스트는 모임을 탈퇴할 수 없습니다. 모임을 취소해주세요.');
+      throw new BadRequestException(
+        '호스트는 모임을 탈퇴할 수 없습니다. 모임을 취소해주세요.',
+      );
     }
 
     // 참여자 정보 조회
@@ -852,9 +958,9 @@ export class MeetingService {
     }
 
     const now = new Date();
-    const recruitUntil = new Date(meeting.recruitUntil);
-    const timeDiff = recruitUntil.getTime() - now.getTime();
-    const hoursUntilDeadline = timeDiff / (1000 * 60 * 60);
+    const scheduledAt = new Date(meeting.scheduledAt);
+    const timeDiff = scheduledAt.getTime() - now.getTime();
+    const hoursUntilMeeting = timeDiff / (1000 * 60 * 60);
 
     return this.dataSource.transaction(async (manager) => {
       // 참여자 상태 변경
@@ -868,34 +974,34 @@ export class MeetingService {
       let message = '';
 
       if (paidAmount > 0) {
-        if (hoursUntilDeadline > 6) {
+        if (hoursUntilMeeting <= 0) {
+          // 모임 시작 후: 노쇼 처리 (환불 없음 + 노쇼 패널티)
+          message = `모임 시작 후 나가기로 노쇼 처리됩니다. 환불은 없으며 ${paidAmount}P의 노쇼 패널티가 적용됩니다.`;
+          await this.applyAdditionalPenalty(userId, meetingId, paidAmount);
+        } else if (hoursUntilMeeting > 6) {
           // 6시간 전: 전액 환불
           refundAmount = paidAmount;
           message = `모임을 탈퇴했습니다. ${refundAmount}P가 환불되었습니다.`;
-          
+
           await this.pointService.refundPointsForCancellation(
             userId,
             meetingId,
             refundAmount,
-            '6시간 전 취소'
+            '6시간 전 취소',
           );
         } else {
-          // 6시간 전 이후: 50% 환불 + 경험치 패널티
+          // 6시간 이내, 모임 시작 전: 50% 환불
           refundAmount = Math.floor(paidAmount * 0.5);
-          penaltyAmount = paidAmount - refundAmount;
-          message = `모임을 탈퇴했습니다. ${refundAmount}P가 환불되고 ${penaltyAmount}P가 패널티로 차감되었습니다.`;
-          
+          message = `모임을 탈퇴했습니다. ${refundAmount}P가 환불되었습니다.`;
+
           if (refundAmount > 0) {
             await this.pointService.refundPointsForCancellation(
               userId,
               meetingId,
               refundAmount,
-              '6시간 전 이후 취소 (50% 환불)'
+              '6시간 이내 모임 시작 전 취소 (50% 환불)',
             );
           }
-          
-          // 추가 포인트 패널티 (paidAmount 1배수, 최저 0 유지)
-          await this.applyAdditionalPenalty(userId, meetingId, paidAmount);
         }
       } else {
         message = '모임을 탈퇴했습니다.';
@@ -937,15 +1043,17 @@ export class MeetingService {
 
     // 수정 가능한 필드만 업데이트
     const updateFields: Partial<Meeting> = {};
-    
+
     if (updateData.introduction !== undefined) {
       updateFields.introduction = updateData.introduction;
     }
-    
+
     if (updateData.focusScore !== undefined) {
       // 집중도 점수 범위 검증
       if (updateData.focusScore < 0 || updateData.focusScore > 100) {
-        throw new BadRequestException('집중도 점수는 0-100 사이의 값이어야 합니다.');
+        throw new BadRequestException(
+          '집중도 점수는 0-100 사이의 값이어야 합니다.',
+        );
       }
       updateFields.focusScore = updateData.focusScore;
     }
@@ -1000,7 +1108,7 @@ export class MeetingService {
 
     const now = new Date();
     const recruitUntil = new Date(meeting.recruitUntil);
-    
+
     // 호스트 취소 가능 조건 확인
     const participants = await this.participantRepository.find({
       where: {
@@ -1008,48 +1116,61 @@ export class MeetingService {
         status: ParticipantStatus.JOINED,
       },
     });
-    
-    const nonHostParticipants = participants.filter(p => !p.isHost);
+
+    const nonHostParticipants = participants.filter((p) => !p.isHost);
     const isRecruitmentEnded = now >= recruitUntil;
-    
+
     // 새로운 취소 규칙 적용
     if (isRecruitmentEnded) {
       if (nonHostParticipants.length < meeting.minimumParticipants - 1) {
         // 정원 미달 시 취소 가능하나 예치금 환불 없음
       } else {
         // 정원 충족/초과 시 취소 불가
-        throw new BadRequestException('모집이 마감되고 정원이 충족된 모임은 취소할 수 없습니다.');
+        throw new BadRequestException(
+          '모집이 마감되고 정원이 충족된 모임은 취소할 수 없습니다.',
+        );
       }
     }
 
     return this.dataSource.transaction(async (manager) => {
       // 모임 상태 변경
-      await manager.update(Meeting, { id: meetingId }, {
-        status: MeetingStatus.CANCELED,
-        cancelledAt: now,
-        cancelledBy: hostUserId,
-        cancellationReason: reason,
-      });
+      await manager.update(
+        Meeting,
+        { id: meetingId },
+        {
+          status: MeetingStatus.CANCELED,
+          cancelledAt: now,
+          cancelledBy: hostUserId,
+          cancellationReason: reason,
+        },
+      );
 
       // 참여자들 환불 처리
       let totalComfortPoints = 0;
-      
+
       for (const participant of participants) {
         const isHost = participant.isHost;
         const paidAmount = participant.paidAmount || 0;
 
         // 참여자 상태 변경
-        await manager.update(MeetingParticipant, { id: participant.id }, {
-          status: ParticipantStatus.DROPPED,
-        });
+        await manager.update(
+          MeetingParticipant,
+          { id: participant.id },
+          {
+            status: ParticipantStatus.DROPPED,
+          },
+        );
 
         if (!isHost) {
-          if (isRecruitmentEnded && nonHostParticipants.length < meeting.minimumParticipants - 1) {
+          if (
+            isRecruitmentEnded &&
+            nonHostParticipants.length < meeting.minimumParticipants - 1
+          ) {
             // 정원 미달로 취소: 예치금 환불 없음, 위로포인트 50P 지급
             await this.pointService.rewardPointsForCompletion(
               participant.userId,
               meetingId,
-              50
+              50,
             );
             totalComfortPoints += 50;
           } else {
@@ -1059,14 +1180,14 @@ export class MeetingService {
                 participant.userId,
                 meetingId,
                 paidAmount,
-                `호스트 취소로 인한 환불: ${reason}`
+                `호스트 취소로 인한 환불: ${reason}`,
               );
             }
-            
+
             await this.pointService.rewardPointsForCompletion(
               participant.userId,
               meetingId,
-              50
+              50,
             );
             totalComfortPoints += 50;
           }
@@ -1074,11 +1195,13 @@ export class MeetingService {
       }
 
       // 호스트에게는 패널티 없음 (새로운 규칙에 따라)
-      
-      const message = isRecruitmentEnded && nonHostParticipants.length < meeting.minimumParticipants - 1 
-        ? `모임이 취소되었습니다. 참여자들에게 위로포인트 총 ${totalComfortPoints}P가 지급되었습니다.`
-        : `모임이 취소되었습니다. 참여자들에게 환불 및 위로포인트 총 ${totalComfortPoints}P가 지급되었습니다.`;
-      
+
+      const message =
+        isRecruitmentEnded &&
+        nonHostParticipants.length < meeting.minimumParticipants - 1
+          ? `모임이 취소되었습니다. 참여자들에게 위로포인트 총 ${totalComfortPoints}P가 지급되었습니다.`
+          : `모임이 취소되었습니다. 참여자들에게 환불 및 위로포인트 총 ${totalComfortPoints}P가 지급되었습니다.`;
+
       return {
         success: true,
         message,
@@ -1123,11 +1246,15 @@ export class MeetingService {
 
     return this.dataSource.transaction(async (manager) => {
       // 모임 상태 변경
-      await manager.update(Meeting, { id: meetingId }, {
-        status: MeetingStatus.CANCELED,
-        cancelledAt: now,
-        cancellationReason: `최소 인원(${meeting.minimumParticipants}명) 미달로 자동 취소`,
-      });
+      await manager.update(
+        Meeting,
+        { id: meetingId },
+        {
+          status: MeetingStatus.CANCELED,
+          cancelledAt: now,
+          cancellationReason: `최소 인원(${meeting.minimumParticipants}명) 미달로 자동 취소`,
+        },
+      );
 
       // 모든 참여자 전액 환불
       let totalRefunded = 0;
@@ -1136,16 +1263,20 @@ export class MeetingService {
         const paidAmount = participant.paidAmount || 0;
 
         // 참여자 상태 변경
-        await manager.update(MeetingParticipant, { id: participant.id }, {
-          status: ParticipantStatus.DROPPED,
-        });
+        await manager.update(
+          MeetingParticipant,
+          { id: participant.id },
+          {
+            status: ParticipantStatus.DROPPED,
+          },
+        );
 
         if (paidAmount > 0) {
           await this.pointService.refundPointsForCancellation(
             participant.userId,
             meetingId,
             paidAmount,
-            '최소 인원 미달로 자동 취소'
+            '최소 인원 미달로 자동 취소',
           );
           totalRefunded += paidAmount;
         }
@@ -1170,12 +1301,17 @@ export class MeetingService {
       await this.pointService.applyNoShowPenalty(
         userId,
         meetingId,
-        penaltyAmount
+        penaltyAmount,
       );
-      
-      this.logger.log(`Applied additional penalty of ${penaltyAmount}P to user ${userId} for meeting ${meetingId}`);
+
+      this.logger.log(
+        `Applied additional penalty of ${penaltyAmount}P to user ${userId} for meeting ${meetingId}`,
+      );
     } catch (error) {
-      this.logger.error(`Failed to apply additional penalty to user ${userId}:`, error);
+      this.logger.error(
+        `Failed to apply additional penalty to user ${userId}:`,
+        error,
+      );
     }
   }
 }

@@ -228,7 +228,6 @@ export class MeetingDto {
 }
 
 export class MeetingDetailDto extends MeetingDto {
-
   @ApiProperty({ type: [MeetingParticipantDto], description: '참여자 목록' })
   participantList: MeetingParticipantDto[];
 

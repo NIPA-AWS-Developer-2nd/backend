@@ -13,6 +13,11 @@ import {
   UserHashtags,
   Gender,
   Level,
+  MissionReview,
+  Meeting,
+  UserMission,
+  MeetingParticipant,
+  VerificationStatus,
 } from '../../entities';
 import { OnboardingCompleteDto } from './dto/onboarding.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
@@ -38,6 +43,14 @@ export class UserService {
     private userHashtagsRepository: Repository<UserHashtags>,
     @InjectRepository(Level)
     private levelRepository: Repository<Level>,
+    @InjectRepository(MissionReview)
+    private missionReviewRepository: Repository<MissionReview>,
+    @InjectRepository(Meeting)
+    private meetingRepository: Repository<Meeting>,
+    @InjectRepository(UserMission)
+    private userMissionRepository: Repository<UserMission>,
+    @InjectRepository(MeetingParticipant)
+    private meetingParticipantRepository: Repository<MeetingParticipant>,
   ) {}
 
   // 포인트로부터 레벨 계산
@@ -437,13 +450,36 @@ export class UserService {
       throw new NotFoundException('사용자를 찾을 수 없습니다.');
     }
 
-    // 현재는 임시 데이터 반환 (실제로는 다른 테이블들과 조인해야 함)
-    // TODO: 실제 미션, 리뷰, 모임 테이블이 생성되면 실제 통계 조회로 변경
+    // 인증 횟수 (승인된 미션 리뷰 수)
+    const verificationCount = await this.missionReviewRepository.count({
+      where: {
+        userId,
+        aiVerificationStatus: VerificationStatus.APPROVED,
+      },
+    });
+
+    // 리뷰 작성 횟수 (모든 미션 리뷰 수)
+    const reviewCount = await this.missionReviewRepository.count({
+      where: { userId },
+    });
+
+    // 주최한 모임 수
+    const hostedMeetingCount = await this.meetingRepository.count({
+      where: { hostUserId: userId },
+    });
+
+    // 완료한 미션 수 (completedAt이 null이 아닌 UserMission 수)
+    const completedMissionCount = await this.userMissionRepository
+      .createQueryBuilder('userMission')
+      .where('userMission.userId = :userId', { userId })
+      .andWhere('userMission.completedAt IS NOT NULL')
+      .getCount();
+
     return {
-      verificationCount: 0, // TODO: 미션 인증 테이블에서 조회
-      reviewCount: 0, // TODO: 리뷰 테이블에서 조회
-      hostedMeetingCount: 0, // TODO: 모임 테이블에서 주최한 모임 수 조회
-      completedMissionCount: 0, // TODO: 완료된 미션 수 조회
+      verificationCount,
+      reviewCount,
+      hostedMeetingCount,
+      completedMissionCount,
     };
   }
 
@@ -593,12 +629,15 @@ export class UserService {
   // 다른 사용자 공개 프로필 조회
   async getPublicUserProfile(userId: string) {
     console.log('🔍 사용자 프로필 조회 시도:', userId);
-    
+
     const user = await this.userRepository.findOne({
       where: { id: userId },
     });
 
-    console.log('👤 찾은 사용자:', user ? `${user.id} (${user.phoneNumber})` : 'null');
+    console.log(
+      '👤 찾은 사용자:',
+      user ? `${user.id} (${user.phoneNumber})` : 'null',
+    );
 
     if (!user) {
       return null;

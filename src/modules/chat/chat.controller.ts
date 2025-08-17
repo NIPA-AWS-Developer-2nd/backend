@@ -8,7 +8,12 @@ import {
   UseGuards,
   Request,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import { ChatService, SendMessageDto, ChatMessage } from './chat.service';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 
@@ -28,7 +33,12 @@ export class ChatController {
     @Param('meetingId') meetingId: string,
     @Body() dto: Omit<SendMessageDto, 'meetingId'>,
     @Request() req: any,
-  ): Promise<{ status: number; message: string; result: boolean; data: ChatMessage }> {
+  ): Promise<{
+    status: number;
+    message: string;
+    result: boolean;
+    data: ChatMessage;
+  }> {
     const chatMessage = await this.chatService.sendMessage(req.user.id, {
       ...dto,
       meetingId,
@@ -51,7 +61,12 @@ export class ChatController {
     @Query('limit') limit: number = 50,
     @Query('offset') offset: number = 0,
     @Request() req: any,
-  ): Promise<{ status: number; message: string; result: boolean; data: ChatMessage[] }> {
+  ): Promise<{
+    status: number;
+    message: string;
+    result: boolean;
+    data: ChatMessage[];
+  }> {
     const messages = await this.chatService.getChatMessages(
       meetingId,
       req.user.id,
@@ -76,7 +91,11 @@ export class ChatController {
     @Body() body: { chatIds: string[] },
     @Request() req: any,
   ): Promise<{ status: number; message: string; result: boolean }> {
-    await this.chatService.markMultipleAsRead(req.user.id, body.chatIds, meetingId);
+    await this.chatService.markMultipleAsRead(
+      req.user.id,
+      body.chatIds,
+      meetingId,
+    );
 
     return {
       status: 200,

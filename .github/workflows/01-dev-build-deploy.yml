@@ -54,6 +54,12 @@ jobs:
           envkey_AWS_CLOUDFRONT_DOMAIN: ${{ secrets.AWS_CLOUDFRONT_DOMAIN}}
           envkey_NAVER_MAP_CLIENT_ID: ${{ secrets.NAVER_MAP_CLIENT_ID }}
           envkey_NAVER_MAP_CLIENT_SECRET: ${{ secrets.NAVER_MAP_CLIENT_SECRET }}
+          envkey_COOLSMS_API_KEY: ${{ secrets.COOLSMS_API_KEY }}
+          envkey_COOLSMS_API_SECRET: ${{ secrets.COOLSMS_API_SECRET }}
+          envkey_COOLSMS_FROM_NUMBER: ${{ secrets.COOLSMS_FROM_NUMBER }}
+          envkey_VAPID_PUBLIC_KEY: ${{ secrets.VAPID_PUBLIC_KEY }}
+          envkey_VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
+          envkey_VAPID_SUBJECT: ${{ secrets.VAPID_SUBJECT }}
           file_name: .env.development
           fail_on_empty: false
           sort_keys: false
@@ -124,6 +130,14 @@ jobs:
 
             NAVER_MAP_CLIENT_ID=${{ secrets.NAVER_MAP_CLIENT_ID }}
             NAVER_MAP_CLIENT_SECRET=${{ secrets.NAVER_MAP_CLIENT_SECRET }}
+
+            COOLSMS_API_KEY=${{ secrets.COOLSMS_API_KEY }}
+            COOLSMS_API_SECRET=${{ secrets.COOLSMS_API_SECRET }}
+            COOLSMS_FROM_NUMBER=${{ secrets.COOLSMS_FROM_NUMBER }}
+
+            VAPID_PUBLIC_KEY=${{ secrets.VAPID_PUBLIC_KEY }}
+            VAPID_PRIVATE_KEY=${{ secrets.VAPID_PRIVATE_KEY }}
+            VAPID_SUBJECT=${{ secrets.VAPID_SUBJECT }}
 
       - name: Deploy Amazon ECS task definition
         uses: aws-actions/amazon-ecs-deploy-task-definition@v2

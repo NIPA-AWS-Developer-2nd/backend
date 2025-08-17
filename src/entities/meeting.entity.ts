@@ -92,6 +92,13 @@ export class Meeting {
   @Column({ type: 'integer', default: 2 })
   minimumParticipants: number; // 최소 참여 인원 (호스트 포함)
 
+  // 알림 관련 필드들
+  @Column({ type: 'timestamptz', nullable: true })
+  lastWarningAt: Date | null; // 마지막 모집 마감 경고 시간
+
+  @Column({ type: 'timestamptz', nullable: true })
+  lastReminderAt: Date | null; // 마지막 활동 시작 리마인더 시간
+
   @CreateDateColumn({ type: 'timestamptz' })
   createdAt: Date;
 

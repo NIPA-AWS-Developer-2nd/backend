@@ -28,11 +28,11 @@ export class MissionReview {
   @Column({ type: 'varchar', length: 26 })
   userId: string;
 
-  @Column({ type: 'text' })
-  reviewText: string;
+  @Column({ type: 'text', nullable: true })
+  reviewText: string | null;
 
-  @Column({ type: 'integer' })
-  rating: number; // 1-5점
+  @Column({ type: 'integer', nullable: true })
+  rating: number | null; // 1-5점
 
   @Column({ type: 'varchar', length: 512, array: true })
   photoUrls: string[];

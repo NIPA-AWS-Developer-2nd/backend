@@ -10,6 +10,7 @@ import {
 import { PointService } from './point.service';
 import { PointController } from './point.controller';
 import { UserModule } from '../user/user.module';
+import { NotificationModule } from '../notification/notification.module';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { UserModule } from '../user/user.module';
       MeetingParticipant,
     ]),
     UserModule,
+    NotificationModule,
   ],
   controllers: [PointController],
   providers: [PointService],

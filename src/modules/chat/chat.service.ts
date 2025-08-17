@@ -1,13 +1,18 @@
-import { Injectable, Logger, NotFoundException, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  NotFoundException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ulid } from 'ulid';
-import { 
-  MeetingChat, 
-  MeetingChatRead, 
-  Meeting, 
+import {
+  MeetingChat,
+  MeetingChatRead,
+  Meeting,
   MeetingParticipant,
-  ParticipantStatus 
+  ParticipantStatus,
 } from '../../entities';
 
 export interface SendMessageDto {
@@ -49,9 +54,9 @@ export class ChatService {
   async sendMessage(userId: string, dto: SendMessageDto): Promise<ChatMessage> {
     // 모임 존재 확인
     const meeting = await this.meetingRepository.findOne({
-      where: { id: dto.meetingId }
+      where: { id: dto.meetingId },
     });
-    
+
     if (!meeting) {
       throw new NotFoundException('모임을 찾을 수 없습니다.');
     }
@@ -61,8 +66,8 @@ export class ChatService {
       where: {
         meetingId: dto.meetingId,
         userId,
-        status: ParticipantStatus.JOINED
-      }
+        status: ParticipantStatus.JOINED,
+      },
     });
 
     if (!participant) {
@@ -75,7 +80,7 @@ export class ChatService {
       meetingId: dto.meetingId,
       userId,
       message: dto.message,
-      messageType: dto.messageType || 'text'
+      messageType: dto.messageType || 'text',
     });
 
     const savedChat = await this.chatRepository.save(chat);
@@ -86,14 +91,19 @@ export class ChatService {
     return this.getChatMessage(savedChat.id);
   }
 
-  async getChatMessages(meetingId: string, userId: string, limit: number = 50, offset: number = 0): Promise<ChatMessage[]> {
+  async getChatMessages(
+    meetingId: string,
+    userId: string,
+    limit: number = 50,
+    offset: number = 0,
+  ): Promise<ChatMessage[]> {
     // 사용자가 해당 모임의 참가자인지 확인
     const participant = await this.participantRepository.findOne({
       where: {
         meetingId,
         userId,
-        status: ParticipantStatus.JOINED
-      }
+        status: ParticipantStatus.JOINED,
+      },
     });
 
     if (!participant) {
@@ -105,7 +115,7 @@ export class ChatService {
       relations: ['user', 'user.profile'],
       order: { createdAt: 'DESC' },
       take: limit,
-      skip: offset
+      skip: offset,
     });
 
     // 각 메시지의 읽음 상태 조회
@@ -113,16 +123,20 @@ export class ChatService {
       chats.map(async (chat) => {
         const readBy = await this.getChatReadUsers(chat.id);
         return this.formatChatMessage(chat, readBy);
-      })
+      }),
     );
 
     return chatMessages.reverse(); // 시간순으로 정렬
   }
 
-  async markAsRead(userId: string, chatId: string, meetingId: string): Promise<void> {
+  async markAsRead(
+    userId: string,
+    chatId: string,
+    meetingId: string,
+  ): Promise<void> {
     // 이미 읽음 처리되었는지 확인
     const existingRead = await this.chatReadRepository.findOne({
-      where: { userId, chatId, meetingId }
+      where: { userId, chatId, meetingId },
     });
 
     if (existingRead) {
@@ -134,34 +148,40 @@ export class ChatService {
       id: ulid(),
       meetingId,
       userId,
-      chatId
+      chatId,
     });
 
     await this.chatReadRepository.save(chatRead);
   }
 
-  async markMultipleAsRead(userId: string, chatIds: string[], meetingId: string): Promise<void> {
+  async markMultipleAsRead(
+    userId: string,
+    chatIds: string[],
+    meetingId: string,
+  ): Promise<void> {
     // 이미 읽음 처리된 채팅 ID들 조회
     const existingReads = await this.chatReadRepository.find({
-      where: { userId, meetingId }
+      where: { userId, meetingId },
     });
-    const existingChatIds = new Set(existingReads.map(read => read.chatId));
+    const existingChatIds = new Set(existingReads.map((read) => read.chatId));
 
     // 아직 읽지 않은 채팅들만 필터링
-    const unreadChatIds = chatIds.filter(chatId => !existingChatIds.has(chatId));
+    const unreadChatIds = chatIds.filter(
+      (chatId) => !existingChatIds.has(chatId),
+    );
 
     if (unreadChatIds.length === 0) {
       return;
     }
 
     // 배치로 읽음 처리
-    const chatReads = unreadChatIds.map(chatId => 
+    const chatReads = unreadChatIds.map((chatId) =>
       this.chatReadRepository.create({
         id: ulid(),
         meetingId,
         userId,
-        chatId
-      })
+        chatId,
+      }),
     );
 
     await this.chatReadRepository.save(chatReads);
@@ -170,7 +190,7 @@ export class ChatService {
   private async getChatMessage(chatId: string): Promise<ChatMessage> {
     const chat = await this.chatRepository.findOne({
       where: { id: chatId },
-      relations: ['user', 'user.profile']
+      relations: ['user', 'user.profile'],
     });
 
     if (!chat) {
@@ -184,13 +204,16 @@ export class ChatService {
   private async getChatReadUsers(chatId: string): Promise<string[]> {
     const reads = await this.chatReadRepository.find({
       where: { chatId },
-      select: ['userId']
+      select: ['userId'],
     });
 
-    return reads.map(read => read.userId);
+    return reads.map((read) => read.userId);
   }
 
-  private formatChatMessage(chat: MeetingChat & { user: any }, readBy: string[]): ChatMessage {
+  private formatChatMessage(
+    chat: MeetingChat & { user: any },
+    readBy: string[],
+  ): ChatMessage {
     return {
       id: chat.id,
       meetingId: chat.meetingId,
@@ -201,9 +224,29 @@ export class ChatService {
       user: {
         id: chat.user.id,
         nickname: chat.user.profile?.nickname || '익명',
-        profileImageUrl: chat.user.profile?.profileImageUrl || null
+        profileImageUrl: chat.user.profile?.profileImageUrl || null,
       },
-      readBy
+      readBy,
     };
+  }
+
+  // 모임 정보와 참가자 조회 (채팅 알림용)
+  async getMeetingWithParticipants(meetingId: string) {
+    return await this.meetingRepository.findOne({
+      where: { id: meetingId },
+      relations: ['participantList'],
+      select: {
+        id: true,
+      },
+    });
+  }
+
+  // 사용자 프로필 조회 (채팅 알림용)
+  async getUserProfile(userId: string) {
+    const result = await this.meetingRepository.query(
+      'SELECT nickname FROM user_profile WHERE user_id = $1',
+      [userId]
+    );
+    return result[0] || null;
   }
 }
