@@ -26,6 +26,7 @@ import { PointModule } from './modules/point/point.module';
 import { AttendanceModule } from './modules/attendance/attendance.module';
 import { ChatModule } from './modules/chat/chat.module';
 import { GiftCardModule } from './modules/gift-card/gift-card.module';
+import { NotificationModule } from './modules/notification/notification.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 
@@ -114,6 +115,7 @@ import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
     AttendanceModule,
     ChatModule,
     GiftCardModule,
+    NotificationModule,
   ],
   controllers: [AppController],
   providers: [
