@@ -244,7 +244,7 @@ export class ChatService {
   // 사용자 프로필 조회 (채팅 알림용)
   async getUserProfile(userId: string) {
     const result = await this.meetingRepository.query(
-      'SELECT nickname FROM user_profile WHERE user_id = $1',
+      'SELECT nickname FROM user_profiles WHERE "userId" = $1',
       [userId]
     );
     return result[0] || null;
