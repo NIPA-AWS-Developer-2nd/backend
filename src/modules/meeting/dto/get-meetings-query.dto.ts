@@ -92,6 +92,14 @@ export class GetMeetingsQueryDto {
   @IsString()
   selectedDate?: string;
 
+  @ApiPropertyOptional({
+    description: '특정 날짜 선택 (YYYY-MM-DD 형식) - selectedDate의 별칭',
+    example: '2025-01-01',
+  })
+  @IsOptional()
+  @IsString()
+  date?: string;
+
   @ApiPropertyOptional({ description: '특정 미션의 모임만 조회' })
   @IsOptional()
   @IsString()

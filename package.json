@@ -28,6 +28,7 @@
     "schema:drop": "npm run typeorm -- schema:drop -d src/config/typeorm.config.ts",
     "schema:create": "npm run typeorm -- schema:sync -d src/config/typeorm.config.ts",
     "db:refresh": "npm run schema:drop && npm run schema:create && npm run seed",
+    "meetings:refresh": "NODE_ENV=development ts-node -r tsconfig-paths/register src/database/seeds/refresh-meetings.ts",
     "version:patch": "npm version patch --no-git-tag-version",
     "version:minor": "npm version minor --no-git-tag-version",
     "version:major": "npm version major --no-git-tag-version"
@@ -70,6 +71,7 @@
     "typeorm": "^0.3.25",
     "ulid": "^3.0.1",
     "uuid": "^11.1.0",
+    "web-push": "^3.6.7",
     "winston": "^3.17.0"
   },
   "devDependencies": {
@@ -87,6 +89,7 @@
     "@types/pg": "^8.15.5",
     "@types/supertest": "^6.0.2",
     "@types/uuid": "^10.0.0",
+    "@types/web-push": "^3.6.4",
     "eslint": "^9.18.0",
     "eslint-config-prettier": "^10.0.1",
     "eslint-plugin-prettier": "^5.2.2",

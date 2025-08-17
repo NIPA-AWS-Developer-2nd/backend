@@ -68,8 +68,8 @@ export class AuthService {
   }
 
   // 전화번호 인증 코드 발송
-  sendVerificationCode(phoneNumber: string): PhoneVerificationResult {
-    return this.phoneService.sendVerificationCode(phoneNumber);
+  async sendVerificationCode(phoneNumber: string): Promise<PhoneVerificationResult> {
+    return await this.phoneService.sendVerificationCode(phoneNumber);
   }
 
   // 전화번호 인증 및 로그인

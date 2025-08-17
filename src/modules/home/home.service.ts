@@ -4,7 +4,10 @@ import { Repository } from 'typeorm';
 import { Mission } from '../../entities/mission.entity';
 import { Meeting, MeetingStatus } from '../../entities/meeting.entity';
 import { UserMission } from '../../entities/user-mission.entity';
-import { MeetingParticipant, ParticipantStatus } from '../../entities/meeting-participant.entity';
+import {
+  MeetingParticipant,
+  ParticipantStatus,
+} from '../../entities/meeting-participant.entity';
 import { HomeData, HotMeeting, MyMeeting } from './types';
 import { ActivityLog } from '../../entities/activity-log.entity';
 import { MeetingSchedulerService } from '../scheduler/meeting-scheduler.service';
@@ -48,13 +51,14 @@ export class HomeService {
       },
     };
 
-
     return result;
   }
 
   // 내 모임 상세 정보 조회
   async getMyMeetingDetail(userId: string, meetingId: string): Promise<any> {
-    this.logger.log(`Getting meeting detail for user ${userId}, meeting ${meetingId}`);
+    this.logger.log(
+      `Getting meeting detail for user ${userId}, meeting ${meetingId}`,
+    );
 
     // 사용자가 해당 모임에 참여하고 있는지 확인
     const participation = await this.meetingParticipantRepository
@@ -116,7 +120,9 @@ export class HomeService {
         'profile.bio',
       ])
       .where('participant.meetingId = :meetingId', { meetingId })
-      .andWhere('participant.status = :status', { status: ParticipantStatus.JOINED })
+      .andWhere('participant.status = :status', {
+        status: ParticipantStatus.JOINED,
+      })
       .orderBy('participant.joinedAt', 'ASC')
       .getMany();
 
@@ -131,30 +137,36 @@ export class HomeService {
       focusScore: meeting.focusScore,
       maxParticipants: meeting.maxParticipants,
       currentParticipants: participants.length,
-      mission: meeting.mission ? {
-        id: meeting.mission.id,
-        title: meeting.mission.title,
-        description: meeting.mission.description,
-        basePoints: meeting.mission.basePoints,
-        difficulty: meeting.mission.difficulty,
-        location: meeting.mission.location,
-        thumbnailUrl: meeting.mission.thumbnailUrl,
-        precautions: meeting.mission.precautions || [],
-      } : null,
-      region: meeting.mission?.district ? {
-        id: meeting.mission.district.id,
-        districtName: meeting.mission.district.districtName,
-        city: meeting.mission.district.city,
-      } : null,
-      host: meeting.host?.profile ? {
-        id: meeting.host.id,
-        nickname: meeting.host.profile.nickname,
-        profileImageUrl: meeting.host.profile.profileImageUrl,
-        level: Math.floor((meeting.host.profile.points || 0) / 100) + 1,
-        mbti: meeting.host.profile.mbti,
-        bio: meeting.host.profile.bio,
-      } : null,
-      participants: participants.map(p => ({
+      mission: meeting.mission
+        ? {
+            id: meeting.mission.id,
+            title: meeting.mission.title,
+            description: meeting.mission.description,
+            basePoints: meeting.mission.basePoints,
+            difficulty: meeting.mission.difficulty,
+            location: meeting.mission.location,
+            thumbnailUrl: meeting.mission.thumbnailUrl,
+            precautions: meeting.mission.precautions || [],
+          }
+        : null,
+      region: meeting.mission?.district
+        ? {
+            id: meeting.mission.district.id,
+            districtName: meeting.mission.district.districtName,
+            city: meeting.mission.district.city,
+          }
+        : null,
+      host: meeting.host?.profile
+        ? {
+            id: meeting.host.id,
+            nickname: meeting.host.profile.nickname,
+            profileImageUrl: meeting.host.profile.profileImageUrl,
+            level: Math.floor((meeting.host.profile.points || 0) / 100) + 1,
+            mbti: meeting.host.profile.mbti,
+            bio: meeting.host.profile.bio,
+          }
+        : null,
+      participants: participants.map((p) => ({
         id: p.user?.id || '',
         nickname: p.user?.profile?.nickname || '익명',
         profileImageUrl: p.user?.profile?.profileImageUrl || '',
@@ -197,19 +209,18 @@ export class HomeService {
     userId: string,
     limit: number,
   ): Promise<HotMeeting[]> {
-    
     // 전체 recruiting 모임 개수 확인
     const totalRecruitingCount = await this.meetingRepository.count({
-      where: { status: MeetingStatus.RECRUITING }
+      where: { status: MeetingStatus.RECRUITING },
     });
-    
-    // 마감이 지나지 않은 recruiting 모임 개수 확인  
+
+    // 마감이 지나지 않은 recruiting 모임 개수 확인
     const activeRecruitingCount = await this.meetingRepository
       .createQueryBuilder('meeting')
       .where('meeting.status = :status', { status: MeetingStatus.RECRUITING })
       .andWhere('meeting.recruitUntil > :now', { now: new Date() })
       .getCount();
-    
+
     // 호스트가 다른 recruiting 모임 개수 확인
     const otherHostCount = await this.meetingRepository
       .createQueryBuilder('meeting')
@@ -255,13 +266,11 @@ export class HomeService {
       .orderBy('(COUNT(DISTINCT ml.id) + COUNT(DISTINCT mp.id))', 'DESC') // 실시간 좋아요 수 + 참가 인원 수로 정렬
       .limit(limit)
       .getRawAndEntities();
-      
-
 
     // 각 모임의 참가자 프로필 이미지들을 가져오기
     const meetingsWithParticipants = await Promise.all(
       hotMeetings.entities.map(async (meeting, index) => {
-        const raw = hotMeetings.raw[index] as { 
+        const raw = hotMeetings.raw[index] as {
           currentParticipants: string;
           likesCount: string;
         };
@@ -276,7 +285,7 @@ export class HomeService {
           .andWhere('mp.status = :status', { status: ParticipantStatus.JOINED })
           .limit(5) // 최대 5명의 프로필 이미지만
           .getMany();
-        
+
         return {
           id: meeting.id,
           title: meeting.mission?.title || '모임',
@@ -286,22 +295,28 @@ export class HomeService {
           currentParticipants: parseInt(raw.currentParticipants) || 0,
           likesCount: parseInt(raw.likesCount) || 0,
           hostName: meeting.host?.profile?.nickname || '익명',
-          host: meeting.host?.profile ? {
-            id: meeting.host.id,
-            nickname: meeting.host.profile.nickname,
-            profileImageUrl: meeting.host.profile.profileImageUrl,
-            level: Math.floor((meeting.host.profile.points || 0) / 100) + 1, // 포인트로 레벨 계산
-            mbti: meeting.host.profile.mbti,
-            bio: meeting.host.profile.bio,
-          } : undefined,
-          region: meeting.mission?.district ? {
-            id: meeting.mission.district.id,
-            districtName: meeting.mission.district.districtName,
-            city: meeting.mission.district.city,
-          } : undefined,
-          participants: participantProfiles.map(p => ({
-            profileImageUrl: p.user?.profile?.profileImageUrl || '',
-          })).filter(p => p.profileImageUrl),
+          host: meeting.host?.profile
+            ? {
+                id: meeting.host.id,
+                nickname: meeting.host.profile.nickname,
+                profileImageUrl: meeting.host.profile.profileImageUrl,
+                level: Math.floor((meeting.host.profile.points || 0) / 100) + 1, // 포인트로 레벨 계산
+                mbti: meeting.host.profile.mbti,
+                bio: meeting.host.profile.bio,
+              }
+            : undefined,
+          region: meeting.mission?.district
+            ? {
+                id: meeting.mission.district.id,
+                districtName: meeting.mission.district.districtName,
+                city: meeting.mission.district.city,
+              }
+            : undefined,
+          participants: participantProfiles
+            .map((p) => ({
+              profileImageUrl: p.user?.profile?.profileImageUrl || '',
+            }))
+            .filter((p) => p.profileImageUrl),
           mission: meeting.mission
             ? {
                 title: meeting.mission.title,
@@ -311,7 +326,7 @@ export class HomeService {
               }
             : undefined,
         };
-      })
+      }),
     );
 
     return meetingsWithParticipants;
@@ -322,7 +337,6 @@ export class HomeService {
     userId: string,
     limit: number,
   ): Promise<MyMeeting[]> {
-    
     // 호스팅 중인 모임들
     const hostMeetings = await this.meetingRepository
       .createQueryBuilder('meeting')
@@ -330,7 +344,7 @@ export class HomeService {
       .leftJoin('meeting_participants', 'mp', 'mp."meetingId" = meeting.id')
       .addSelect([
         'meeting.id',
-        'meeting.status', 
+        'meeting.status',
         'meeting.scheduledAt',
         'meeting.recruitUntil',
         'meeting.hostUserId',
@@ -338,11 +352,11 @@ export class HomeService {
         'meeting.minimumParticipants',
         'meeting.createdAt',
         'meeting.updatedAt',
-        'mission.title', 
-        'mission.basePoints', 
-        'mission.thumbnailUrl', 
-        'mission.difficulty', 
-        'mission.location'
+        'mission.title',
+        'mission.basePoints',
+        'mission.thumbnailUrl',
+        'mission.difficulty',
+        'mission.location',
       ])
       .where('meeting.hostUserId = :userId', { userId })
       .groupBy('meeting.id, mission.id')
@@ -378,33 +392,37 @@ export class HomeService {
       ])
       .where('participant.userId = :userId', { userId })
       .andWhere('meeting.hostUserId != :userId', { userId }) // 호스트인 모임 제외
-      .andWhere('participant.status = :participantStatus', { participantStatus: ParticipantStatus.JOINED }) // 참여 상태만
+      .andWhere('participant.status = :participantStatus', {
+        participantStatus: ParticipantStatus.JOINED,
+      }) // 참여 상태만
       .groupBy('participant.id, meeting.id, mission.id')
       .addSelect('COUNT(mp.id)', 'participantCount')
       .orderBy('meeting.scheduledAt', 'DESC')
       .limit(limit)
       .getRawAndEntities();
 
-
-
-    
-
     const myMeetings: MyMeeting[] = [];
 
     // 호스팅 모임들 추가 (스케줄러와 일치하는 상태 매핑)
     for (const [index, meeting] of hostMeetings.entities.entries()) {
       const raw = hostMeetings.raw[index] as { participantCount: string };
-      
+
       // 실시간 상태 계산
-      const currentStatus = this.schedulerService.calculateMeetingStatus(meeting);
+      const currentStatus =
+        this.schedulerService.calculateMeetingStatus(meeting);
       const status = this.mapMeetingStatusToHomeStatus(currentStatus);
-      
+
       // 참가자 정보 조회
       const participants = await this.meetingParticipantRepository
         .createQueryBuilder('mp')
         .leftJoin('mp.user', 'user')
         .leftJoin('user.profile', 'profile')
-        .addSelect(['user.id', 'profile.nickname', 'profile.profileImageUrl', 'mp.isHost'])
+        .addSelect([
+          'user.id',
+          'profile.nickname',
+          'profile.profileImageUrl',
+          'mp.isHost',
+        ])
         .where('mp.meetingId = :meetingId', { meetingId: meeting.id })
         .andWhere('mp.status = :status', { status: ParticipantStatus.JOINED })
         .getMany();
@@ -420,7 +438,7 @@ export class HomeService {
         participantCount: parseInt(raw.participantCount) || 0,
         currentParticipants: parseInt(raw.participantCount) || 0,
         maxParticipants: meeting.maxParticipants,
-        participants: participants.map(p => ({
+        participants: participants.map((p) => ({
           userId: p.user?.id || p.userId,
           nickname: p.user?.profile?.nickname,
           profileImageUrl: p.user?.profile?.profileImageUrl,
@@ -436,7 +454,7 @@ export class HomeService {
             }
           : undefined,
       };
-      
+
       myMeetings.push(meetingData);
     }
 
@@ -446,23 +464,31 @@ export class HomeService {
         participantCount: string;
       };
       const meeting = participant.meeting;
-      
+
       // 필수 데이터 검증
       if (!meeting || !meeting.id || !meeting.scheduledAt) {
-        this.logger.warn(`Invalid meeting data for participant ${participant.id}: missing meeting, id, or scheduledAt`);
+        this.logger.warn(
+          `Invalid meeting data for participant ${participant.id}: missing meeting, id, or scheduledAt`,
+        );
         continue;
       }
-      
+
       // 실시간 상태 계산
-      const currentStatus = this.schedulerService.calculateMeetingStatus(meeting);
+      const currentStatus =
+        this.schedulerService.calculateMeetingStatus(meeting);
       const status = this.mapMeetingStatusToHomeStatus(currentStatus);
-      
+
       // 참가자 정보 조회
       const participants = await this.meetingParticipantRepository
         .createQueryBuilder('mp')
         .leftJoin('mp.user', 'user')
         .leftJoin('user.profile', 'profile')
-        .addSelect(['user.id', 'profile.nickname', 'profile.profileImageUrl', 'mp.isHost'])
+        .addSelect([
+          'user.id',
+          'profile.nickname',
+          'profile.profileImageUrl',
+          'mp.isHost',
+        ])
         .where('mp.meetingId = :meetingId', { meetingId: meeting.id })
         .andWhere('mp.status = :status', { status: ParticipantStatus.JOINED })
         .getMany();
@@ -478,7 +504,7 @@ export class HomeService {
         participantCount: parseInt(raw.participantCount) || 0,
         currentParticipants: parseInt(raw.participantCount) || 0,
         maxParticipants: meeting.maxParticipants,
-        participants: participants.map(p => ({
+        participants: participants.map((p) => ({
           userId: p.user?.id || p.userId,
           nickname: p.user?.profile?.nickname,
           profileImageUrl: p.user?.profile?.profileImageUrl,
@@ -494,7 +520,7 @@ export class HomeService {
             }
           : undefined,
       };
-      
+
       myMeetings.push(meetingData);
     }
 

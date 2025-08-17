@@ -10,6 +10,10 @@ import {
   UserInterests,
   Level,
   UserHashtags,
+  MissionReview,
+  Meeting,
+  UserMission,
+  MeetingParticipant,
 } from '../../entities';
 
 @Module({
@@ -22,6 +26,10 @@ import {
       UserInterests,
       Level,
       UserHashtags,
+      MissionReview,
+      Meeting,
+      UserMission,
+      MeetingParticipant,
     ]),
   ],
   controllers: [UserController],

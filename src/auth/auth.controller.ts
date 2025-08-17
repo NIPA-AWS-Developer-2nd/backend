@@ -225,11 +225,11 @@ export class AuthController {
   // 전화번호 인증 코드 발송
   @Public()
   @Post('phone/send-code')
-  sendVerificationCode(
+  async sendVerificationCode(
     @Body() body: PhoneVerificationRequest,
-  ): PhoneVerificationResult {
+  ): Promise<PhoneVerificationResult> {
     try {
-      const result = this.authService.sendVerificationCode(body.phoneNumber);
+      const result = await this.authService.sendVerificationCode(body.phoneNumber);
       return result;
     } catch (error: unknown) {
       this.logger.error('전화번호 인증 코드 발송 실패', {

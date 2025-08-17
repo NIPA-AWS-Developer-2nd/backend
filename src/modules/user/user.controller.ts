@@ -391,10 +391,13 @@ export class UserController {
     if (process.env.NODE_ENV !== 'development') {
       throw new ValidationException('개발 환경에서만 사용 가능합니다.');
     }
-    
+
     try {
       const result = await this.userService.getAllUsers();
-      return ApiResponseDto.success(result, '사용자 목록 조회가 완료되었습니다.');
+      return ApiResponseDto.success(
+        result,
+        '사용자 목록 조회가 완료되었습니다.',
+      );
     } catch {
       throw new ValidationException('사용자 목록 조회 중 오류가 발생했습니다.');
     }
@@ -461,7 +464,9 @@ export class UserController {
       if (error instanceof ResourceNotFoundException) {
         throw error;
       }
-      throw new ValidationException('사용자 프로필 조회 중 오류가 발생했습니다.');
+      throw new ValidationException(
+        '사용자 프로필 조회 중 오류가 발생했습니다.',
+      );
     }
   }
 }

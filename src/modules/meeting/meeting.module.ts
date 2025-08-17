@@ -14,6 +14,7 @@ import { LocationVerifiedGuard } from '../../auth/guards/location-verified.guard
 import { UserModule } from '../user/user.module';
 import { SchedulerModule } from '../scheduler/scheduler.module';
 import { PointModule } from '../point/point.module';
+import { NotificationModule } from '../notification/notification.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { PointModule } from '../point/point.module';
     UserModule,
     SchedulerModule,
     PointModule,
+    NotificationModule,
   ],
   controllers: [MeetingController],
   providers: [MeetingService, LocationVerifiedGuard],

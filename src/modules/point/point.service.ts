@@ -14,7 +14,9 @@ import {
   UserProfile,
   Meeting,
   MeetingParticipant,
+  ParticipantStatus,
 } from '../../entities';
+import { MeetingNotificationHelper } from '../notification/helpers/meeting-notification.helper';
 
 @Injectable()
 export class PointService {
@@ -32,6 +34,7 @@ export class PointService {
     @InjectRepository(MeetingParticipant)
     private readonly participantRepository: Repository<MeetingParticipant>,
     private readonly dataSource: DataSource,
+    private readonly meetingNotificationHelper: MeetingNotificationHelper,
   ) {}
 
   /**
@@ -59,17 +62,16 @@ export class PointService {
         );
       }
 
-      // 중복 결제 확인
-      const existingTransaction = await manager.findOne(PointTransaction, {
+      // 중복 결제 확인 (현재 참여 중인 경우만)
+      const currentParticipant = await manager.findOne(MeetingParticipant, {
         where: {
           userId,
           meetingId,
-          type: PointTransactionType.MEETING_PAYMENT,
-          status: PointTransactionStatus.COMPLETED,
+          status: ParticipantStatus.JOINED,
         },
       });
 
-      if (existingTransaction) {
+      if (currentParticipant && currentParticipant.pointsPaid) {
         throw new BadRequestException('이미 결제가 완료된 모임입니다.');
       }
 
@@ -107,6 +109,20 @@ export class PointService {
       this.logger.log(
         `Points charged: userId=${userId}, meetingId=${meetingId}, amount=${amount}`,
       );
+
+      // 포인트 차감 알림 발송 (비동기)
+      setImmediate(async () => {
+        try {
+          await this.meetingNotificationHelper.notifyPointDeducted(
+            userId,
+            amount,
+            '모임 참여비 결제',
+            meetingId
+          );
+        } catch (error) {
+          this.logger.error('Failed to send point deduction notification:', error);
+        }
+      });
 
       return savedTransaction;
     });
@@ -177,6 +193,20 @@ export class PointService {
       this.logger.log(
         `Points rewarded: userId=${userId}, meetingId=${meetingId}, amount=${amount}`,
       );
+
+      // 포인트 지급 알림 발송 (비동기)
+      setImmediate(async () => {
+        try {
+          await this.meetingNotificationHelper.notifyPointEarned(
+            userId,
+            amount,
+            '모임 완료 보상',
+            meetingId
+          );
+        } catch (error) {
+          this.logger.error('Failed to send point reward notification:', error);
+        }
+      });
 
       return savedTransaction;
     });
@@ -293,6 +323,21 @@ export class PointService {
         `No-show penalty applied: userId=${userId}, meetingId=${meetingId}, penalty=${balanceBefore - balanceAfter}`,
       );
 
+      // 포인트 차감 알림 발송 (비동기)
+      setImmediate(async () => {
+        try {
+          const actualPenalty = balanceBefore - balanceAfter;
+          await this.meetingNotificationHelper.notifyPointDeducted(
+            userId,
+            actualPenalty,
+            '노쇼 패널티',
+            meetingId
+          );
+        } catch (error) {
+          this.logger.error('Failed to send no-show penalty notification:', error);
+        }
+      });
+
       return savedTransaction;
     });
   }
@@ -371,7 +416,7 @@ export class PointService {
    */
   async getUserPoints(userId: string): Promise<number> {
     this.logger.log(`Getting points for user: ${userId}`);
-    
+
     const userProfile = await this.userProfileRepository.findOne({
       where: { userId },
       select: ['points'],

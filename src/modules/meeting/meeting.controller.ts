@@ -525,7 +525,8 @@ export class MeetingController {
   })
   @ApiOperation({
     summary: '모임 수정 (호스트)',
-    description: '호스트가 모임을 수정합니다. RECRUITING 상태에서만 소개글과 집중도 점수 수정 가능합니다.',
+    description:
+      '호스트가 모임을 수정합니다. RECRUITING 상태에서만 소개글과 집중도 점수 수정 가능합니다.',
   })
   @ApiResponse({
     status: 200,
@@ -566,7 +567,8 @@ export class MeetingController {
   })
   @ApiOperation({
     summary: '모임 취소 (호스트)',
-    description: '호스트가 모임을 취소합니다. 취소 정책에 따라 환불/패널티가 처리됩니다.',
+    description:
+      '호스트가 모임을 취소합니다. 취소 정책에 따라 환불/패널티가 처리됩니다.',
   })
   @ApiResponse({
     status: 200,
@@ -581,6 +583,10 @@ export class MeetingController {
     @CurrentUser() user: { id: string },
     @Body() body: { reason: string },
   ): Promise<{ success: boolean; message: string }> {
-    return this.meetingService.cancelMeetingByHost(meetingId, user.id, body.reason);
+    return this.meetingService.cancelMeetingByHost(
+      meetingId,
+      user.id,
+      body.reason,
+    );
   }
 }

@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, LessThan } from 'typeorm';
+import { Repository, LessThan, In } from 'typeorm';
 import { ulid } from 'ulid';
 import {
   Meeting,
@@ -11,7 +11,9 @@ import {
   MeetingAttendance,
   AttendanceStatus,
 } from '../../entities';
+import { MissionReview, VerificationStatus } from '../../entities/mission-review.entity';
 import { PointService } from '../point/point.service';
+import { MeetingNotificationHelper } from '../notification/helpers/meeting-notification.helper';
 
 @Injectable()
 export class MeetingSchedulerService {
@@ -24,7 +26,10 @@ export class MeetingSchedulerService {
     private readonly participantRepository: Repository<MeetingParticipant>,
     @InjectRepository(MeetingAttendance)
     private readonly attendanceRepository: Repository<MeetingAttendance>,
+    @InjectRepository(MissionReview)
+    private readonly missionReviewRepository: Repository<MissionReview>,
     private readonly pointService: PointService,
+    private readonly meetingNotificationHelper: MeetingNotificationHelper,
   ) {}
 
   /**
@@ -46,7 +51,9 @@ export class MeetingSchedulerService {
       const now = new Date();
       this.logger.log('Meeting status update started');
 
+      await this.processRecruitmentWarnings(now);
       await this.processRecruitmentDeadlines(now);
+      await this.processActivityReminders(now);
       await this.processActivityStart(now);
       await this.processAttendanceDeadlines(now);
       await this.processActivityCompletion(now);
@@ -54,6 +61,54 @@ export class MeetingSchedulerService {
       this.logger.log('Meeting status update completed');
     } catch (error) {
       this.logger.error('Error updating meeting statuses:', error);
+    }
+  }
+
+  /**
+   * 0. 모집 마감 경고: 1시간 전 알림
+   */
+  private async processRecruitmentWarnings(now: Date): Promise<void> {
+    const oneHourLater = new Date(now.getTime() + 60 * 60 * 1000);
+    
+    const meetingsNearDeadline = await this.meetingRepository.find({
+      where: {
+        status: MeetingStatus.RECRUITING,
+        recruitUntil: LessThan(oneHourLater),
+      },
+    });
+
+    for (const meeting of meetingsNearDeadline) {
+      // 마지막 경고 알림 시간 체크 (중복 방지)
+      const lastWarningTime = meeting.lastWarningAt;
+      const timeSinceLastWarning = lastWarningTime ? 
+        (now.getTime() - lastWarningTime.getTime()) / 1000 / 60 : // 분 단위
+        Infinity;
+
+      // 1시간 이내에 경고를 보낸 적이 없으면 알림 발송
+      if (timeSinceLastWarning > 60) {
+        const timeRemaining = Math.ceil((meeting.recruitUntil.getTime() - now.getTime()) / 1000 / 60);
+        
+        if (timeRemaining > 0 && timeRemaining <= 60) {
+          // 아직 참가 가능한 사용자들에게 알림 (전체 사용자 대상)
+          // 실제로는 관심있는 사용자들에게만 보내는 것이 좋음
+          const interestedUsers = ['sample-user-id']; // TODO: 실제 관심 사용자 조회 로직
+          
+          await this.meetingNotificationHelper.notifyRecruitmentDeadlineWarning(
+            interestedUsers,
+            {
+              id: meeting.id,
+            },
+            `${timeRemaining}분`
+          );
+
+          // 마지막 경고 시간 업데이트
+          await this.meetingRepository.update(meeting.id, {
+            lastWarningAt: now,
+          });
+
+          this.logger.log(`Recruitment warning sent for meeting ${meeting.id} (${timeRemaining} minutes remaining)`);
+        }
+      }
     }
   }
 
@@ -76,20 +131,106 @@ export class MeetingSchedulerService {
         },
       });
 
+      const participants = await this.participantRepository.find({
+        where: {
+          meetingId: meeting.id,
+          status: ParticipantStatus.JOINED,
+        },
+        select: ['userId'],
+      });
+      const participantIds = participants.map(p => p.userId);
+
       if (currentParticipants >= meeting.minimumParticipants) {
         // 정원 충족: RECRUITING → READY
         await this.meetingRepository.update(meeting.id, {
           status: MeetingStatus.READY,
         });
+
+        // 모집 마감 알림 발송 (참가자들에게)
+        if (participantIds.length > 0) {
+          await this.meetingNotificationHelper.notifyRecruitmentClosed(
+            participantIds,
+            {
+              id: meeting.id,
+            }
+          );
+        }
+
         this.logger.log(
           `Meeting ${meeting.id} moved to READY (${currentParticipants} participants)`,
         );
       } else {
         // 정원 미달: RECRUITING → CANCELED + 알림 + 환불 + 삭제 예약
+        // 참가자들에게 취소 알림 발송
+        if (participantIds.length > 0) {
+          await this.meetingNotificationHelper.notifyRecruitmentClosed(
+            participantIds,
+            {
+              id: meeting.id,
+            }
+          );
+        }
+
         await this.cancelMeetingDueToInsufficientParticipants(meeting.id);
         this.logger.log(
           `Meeting ${meeting.id} canceled due to insufficient participants (${currentParticipants}/${meeting.minimumParticipants})`,
         );
+      }
+    }
+  }
+
+  /**
+   * 1.5. 활동 시작 리마인더: 30분 전 알림
+   */
+  private async processActivityReminders(now: Date): Promise<void> {
+    const thirtyMinutesLater = new Date(now.getTime() + 30 * 60 * 1000);
+    
+    const meetingsStartingSoon = await this.meetingRepository.find({
+      where: {
+        status: MeetingStatus.READY,
+        scheduledAt: LessThan(thirtyMinutesLater),
+      },
+    });
+
+    for (const meeting of meetingsStartingSoon) {
+      // 마지막 리마인더 시간 체크 (중복 방지)
+      const lastReminderTime = meeting.lastReminderAt;
+      const timeSinceLastReminder = lastReminderTime ? 
+        (now.getTime() - lastReminderTime.getTime()) / 1000 / 60 : // 분 단위
+        Infinity;
+
+      // 1시간 이내에 리마인더를 보낸 적이 없으면 알림 발송
+      if (timeSinceLastReminder > 60) {
+        const timeRemaining = Math.ceil((meeting.scheduledAt.getTime() - now.getTime()) / 1000 / 60);
+        
+        if (timeRemaining > 0 && timeRemaining <= 30) {
+          const participants = await this.participantRepository.find({
+            where: {
+              meetingId: meeting.id,
+              status: ParticipantStatus.JOINED,
+            },
+            select: ['userId'],
+          });
+          
+          if (participants.length > 0) {
+            const participantIds = participants.map(p => p.userId);
+            
+            await this.meetingNotificationHelper.notifyActivityStartReminder(
+              participantIds,
+              {
+                id: meeting.id,
+              },
+              `${timeRemaining}분`
+            );
+
+            // 마지막 리마인더 시간 업데이트
+            await this.meetingRepository.update(meeting.id, {
+              lastReminderAt: now,
+            });
+
+            this.logger.log(`Activity start reminder sent for meeting ${meeting.id} (${timeRemaining} minutes remaining)`);
+          }
+        }
       }
     }
   }
@@ -118,6 +259,29 @@ export class MeetingSchedulerService {
         qrGeneratedAt: now,
       });
 
+      // 참가자들의 미션 리뷰 레코드 생성 (기본값: PENDING)
+      await this.createInitialMissionReviews(meeting.id);
+
+      // 활동 시작 알림 발송
+      const participants = await this.participantRepository.find({
+        where: {
+          meetingId: meeting.id,
+          status: ParticipantStatus.JOINED,
+        },
+        select: ['userId'],
+      });
+      
+      if (participants.length > 0) {
+        const participantIds = participants.map(p => p.userId);
+        
+        await this.meetingNotificationHelper.notifyActivityStarted(
+          participantIds,
+          {
+            id: meeting.id,
+          }
+        );
+      }
+
       this.logger.log(
         `Meeting ${meeting.id} started and QR token generated (expires at ${new Date(now.getTime() + 30 * 60 * 1000).toISOString()})`,
       );
@@ -125,12 +289,11 @@ export class MeetingSchedulerService {
   }
 
   /**
-   * 3. 출석체크 마감 작업: 활동 시작 + 30분 후 미체크자 노쇼 처리 (dev: 10분)
+   * 3. 출석체크 마감 작업: 활동 시작 + 5분 후 미체크자 노쇼 처리
    */
   private async processAttendanceDeadlines(now: Date): Promise<void> {
-    // TODO: 개발 환경 테스트용 10분 설정 - 나중에 1분 또는 적절한 시간으로 조정 필요
-    const attendanceDeadlineMs =
-      process.env.NODE_ENV === 'development' ? 10 * 60 * 1000 : 30 * 60 * 1000;
+    // 출석체크 시간: 개발/운영 모두 5분
+    const attendanceDeadlineMs = 5 * 60 * 1000; // 5분
     const deadlineAgo = new Date(now.getTime() - attendanceDeadlineMs);
 
     const meetingsWithExpiredAttendance = await this.meetingRepository.find({
@@ -162,14 +325,11 @@ export class MeetingSchedulerService {
   }
 
   /**
-   * 4. 활동 완료 작업: 활동 시작 + 12시간 후 COMPLETED 전환 및 정산 (dev: 20분)
+   * 4. 활동 완료 작업: 활동 시작 + 10분 후 COMPLETED 전환 및 정산
    */
   private async processActivityCompletion(now: Date): Promise<void> {
-    // TODO: 개발 환경 테스트용 20분 설정 - 나중에 적절한 시간으로 조정 필요
-    const completionDeadlineMs =
-      process.env.NODE_ENV === 'development'
-        ? 20 * 60 * 1000
-        : 12 * 60 * 60 * 1000;
+    // 활동시간: 개발/운영 모두 10분
+    const completionDeadlineMs = 10 * 60 * 1000; // 10분
     const completionDeadlineAgo = new Date(
       now.getTime() - completionDeadlineMs,
     );
@@ -354,6 +514,18 @@ export class MeetingSchedulerService {
       });
       await this.attendanceRepository.save(attendance);
 
+      // 노쇼 알림 발송
+      const meeting = await this.meetingRepository.findOne({
+        where: { id: meetingId },
+        select: ['id'],
+      });
+
+      if (meeting) {
+        await this.meetingNotificationHelper.notifyNoShow(userId, {
+          id: meeting.id,
+        });
+      }
+
       this.logger.log(
         `Applied no-show penalty (-200P) to user ${userId} for meeting ${meetingId}`,
       );
@@ -457,21 +629,58 @@ export class MeetingSchedulerService {
       let successfulRewards = 0;
       let failedRewards = 0;
 
-      // 각 참여자에게 보상 지급
+      // 각 참여자에게 보상 지급 (미션 인증 완료자만)
       for (const participant of participants) {
         try {
-          await this.pointService.rewardPointsForCompletion(
-            participant.userId,
-            meeting.id,
-            rewardAmount,
-          );
-          successfulRewards++;
+          // 미션 인증 여부 확인
+          const missionReview = await this.missionReviewRepository.findOne({
+            where: {
+              meetingId: meeting.id,
+              userId: participant.userId,
+            },
+          });
 
-          // 참여자 정보에 보상 지급 완료 표시
-          await this.participantRepository.update(
-            { id: participant.id },
-            { rewardReceived: true },
-          );
+          // 인증이 승인된 경우에만 포인트 지급
+          if (missionReview && missionReview.aiVerificationStatus === VerificationStatus.APPROVED) {
+            // 포인트 계산 (호스트 보너스, 중복 참여 페널티 적용)
+            const calculatedPoints = await this.calculateRewardPoints(
+              participant.userId,
+              meeting,
+              participant.isHost,
+            );
+
+            // 계산된 포인트를 mission_reviews에 저장
+            await this.missionReviewRepository.update(
+              { id: missionReview.id },
+              {
+                earnedPoints: calculatedPoints.finalPoints,
+                pointCalculationDetails: calculatedPoints.details,
+              },
+            );
+
+            // 포인트 지급
+            await this.pointService.rewardPointsForCompletion(
+              participant.userId,
+              meeting.id,
+              calculatedPoints.finalPoints,
+            );
+            successfulRewards++;
+
+            // 참여자 정보에 보상 지급 완룉 표시
+            await this.participantRepository.update(
+              { id: participant.id },
+              { rewardReceived: true },
+            );
+            
+            this.logger.log(
+              `Reward distributed to participant ${participant.userId} for meeting ${meeting.id} (${calculatedPoints.finalPoints} points)`,
+            );
+          } else {
+            this.logger.warn(
+              `Participant ${participant.userId} for meeting ${meeting.id} has no approved mission review. Reward not distributed.`,
+            );
+            failedRewards++;
+          }
         } catch (error) {
           this.logger.error(
             `Failed to distribute reward to participant ${participant.userId} for meeting ${meeting.id}:`,
@@ -696,12 +905,8 @@ export class MeetingSchedulerService {
       return MeetingStatus.READY;
     }
 
-    // 활동 시작 + 완료 시간 확인 (dev: 20분, prod: 12시간)
-    // TODO: 개발 환경 테스트용 20분 설정 - 나중에 적절한 시간으로 조정 필요
-    const completionMs =
-      process.env.NODE_ENV === 'development'
-        ? 20 * 60 * 1000
-        : 12 * 60 * 60 * 1000;
+    // 활동 시작 + 완료 시간 확인: 10분
+    const completionMs = 10 * 60 * 1000; // 10분
     const completionTime = new Date(
       meeting.scheduledAt.getTime() + completionMs,
     );
@@ -711,5 +916,199 @@ export class MeetingSchedulerService {
 
     // 활동 시작 이후 ~ 12시간 사이는 ACTIVE
     return MeetingStatus.ACTIVE;
+  }
+
+  /**
+   * 모임 시작 시 참가자들의 미션 리뷰 레코드 생성
+   */
+  private async createInitialMissionReviews(meetingId: string): Promise<void> {
+    try {
+      // 모임 참가자 조회 (JOINED 상태만)
+      const participants = await this.participantRepository.find({
+        where: {
+          meetingId,
+          status: ParticipantStatus.JOINED,
+        },
+      });
+
+      for (const participant of participants) {
+        // 이미 리뷰가 있는지 확인
+        const existingReview = await this.missionReviewRepository.findOne({
+          where: {
+            meetingId,
+            userId: participant.userId,
+          },
+        });
+
+        // 리뷰가 없으면 생성
+        if (!existingReview) {
+          const newReview = this.missionReviewRepository.create({
+            meetingId,
+            userId: participant.userId,
+            reviewText: null,
+            rating: null,
+            photoUrls: [],
+            aiVerificationStatus: VerificationStatus.PENDING,
+            earnedPoints: 0,
+            pointCalculationDetails: null,
+            submittedAt: new Date(),
+            verifiedAt: null,
+          });
+
+          await this.missionReviewRepository.save(newReview);
+          
+          this.logger.log(
+            `Created initial mission review for user ${participant.userId} in meeting ${meetingId}`,
+          );
+        }
+      }
+
+      this.logger.log(
+        `Initial mission reviews created for meeting ${meetingId} (${participants.length} participants)`,
+      );
+    } catch (error) {
+      this.logger.error(
+        `Failed to create initial mission reviews for meeting ${meetingId}:`,
+        error,
+      );
+    }
+  }
+
+  /**
+   * 포인트 계산 로직 (호스트 보너스, 중복 참여 페널티 적용)
+   */
+  private async calculateRewardPoints(
+    userId: string,
+    meeting: Meeting,
+    isHost: boolean,
+  ): Promise<{
+    finalPoints: number;
+    details: any;
+  }> {
+    const basePoints = meeting.rewardPoints || meeting.mission?.basePoints || 0;
+    let finalPoints = basePoints;
+    const calculations: Array<{
+      type: string;
+      amount: number;
+      description: string;
+      details?: any;
+    }> = [];
+
+    // 1. 기본 포인트
+    calculations.push({
+      type: 'base',
+      amount: basePoints,
+      description: '기본 미션 완료 포인트',
+    });
+
+    // 2. 호스트 보너스 (+200P)
+    if (isHost) {
+      const hostBonus = 200;
+      finalPoints += hostBonus;
+      calculations.push({
+        type: 'host_bonus',
+        amount: hostBonus,
+        description: '호스트 보너스',
+      });
+    }
+
+    // 3. 중복 참여 페널티 (-50%)
+    const duplicateParticipants = await this.checkDuplicateParticipants(
+      userId,
+      meeting.id,
+    );
+    
+    if (duplicateParticipants.length > 0) {
+      const penaltyAmount = Math.floor(finalPoints * 0.5);
+      finalPoints = Math.floor(finalPoints * 0.5);
+      calculations.push({
+        type: 'duplicate_penalty',
+        amount: -penaltyAmount,
+        description: '중복 참여 페널티 (-50%)',
+        details: {
+          duplicateUserIds: duplicateParticipants,
+          duplicateCount: duplicateParticipants.length,
+        },
+      });
+    }
+
+    const details = {
+      basePoints,
+      finalPoints,
+      calculations,
+      metadata: {
+        calculatedAt: new Date().toISOString(),
+        isHost,
+        meetingDuration: 10, // 10분 고정
+        minimumDuration: 10,
+      },
+    };
+
+    return { finalPoints, details };
+  }
+
+  /**
+   * 중복 참여자 확인 (같은 모임에 이전에 함께 참여한 사용자들)
+   */
+  private async checkDuplicateParticipants(
+    userId: string,
+    currentMeetingId: string,
+  ): Promise<string[]> {
+    try {
+      // 현재 모임의 다른 참가자들 조회
+      const currentParticipants = await this.participantRepository.find({
+        where: {
+          meetingId: currentMeetingId,
+          status: ParticipantStatus.JOINED,
+        },
+        select: ['userId'],
+      });
+
+      const currentParticipantIds = currentParticipants
+        .map(p => p.userId)
+        .filter(id => id !== userId); // 자기 자신 제외
+
+      if (currentParticipantIds.length === 0) {
+        return [];
+      }
+
+      // 해당 사용자가 이전에 참여했던 모임들 조회
+      const previousMeetings = await this.participantRepository.find({
+        where: {
+          userId,
+          status: ParticipantStatus.JOINED,
+        },
+        select: ['meetingId'],
+      });
+
+      const previousMeetingIds = previousMeetings
+        .map(p => p.meetingId)
+        .filter(id => id !== currentMeetingId); // 현재 모임 제외
+
+      if (previousMeetingIds.length === 0) {
+        return [];
+      }
+
+      // 이전 모임들에서 현재 모임 참가자들과 중복되는 사용자들 찾기
+      const duplicateParticipants = await this.participantRepository.find({
+        where: {
+          meetingId: In(previousMeetingIds),
+          userId: In(currentParticipantIds),
+          status: ParticipantStatus.JOINED,
+        },
+        select: ['userId'],
+      });
+
+      const duplicateUserIds = [...new Set(duplicateParticipants.map(p => p.userId))];
+      
+      this.logger.log(
+        `User ${userId} has ${duplicateUserIds.length} duplicate participants: ${duplicateUserIds.join(', ')}`,
+      );
+
+      return duplicateUserIds;
+    } catch (error) {
+      this.logger.error(`Failed to check duplicate participants for user ${userId}:`, error);
+      return [];
+    }
   }
 }

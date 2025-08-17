@@ -11,6 +11,7 @@ import { GoogleService } from './service/google.service';
 import { PhoneService } from './service/phone.service';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { SmsService } from '../common/services';
 import {
   User,
   SocialAccount,
@@ -55,6 +56,7 @@ import {
     NaverService,
     GoogleService,
     PhoneService,
+    SmsService,
     JwtStrategy,
     JwtAuthGuard,
   ],

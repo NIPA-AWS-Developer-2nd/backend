@@ -134,7 +134,9 @@ export class MissionService {
 
     // 응답 포맷 맞추기
     const formattedMissions = missions.map((mission) => {
-      const isCompleted = userId ? completedMissionIds.includes(mission.id) : false;
+      const isCompleted = userId
+        ? completedMissionIds.includes(mission.id)
+        : false;
       return {
         id: mission.id,
         title: mission.title,
