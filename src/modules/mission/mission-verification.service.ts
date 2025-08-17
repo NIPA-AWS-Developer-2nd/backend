@@ -110,6 +110,9 @@ export class MissionVerificationService {
           rating: null,
           photoUrls: [], // 실제 S3 URL은 나중에 설정
           aiVerificationStatus: status,
+          aiConfidence: verificationResult.confidence,
+          aiReasoning: verificationResult.reasoning,
+          aiDetectedElements: verificationResult.detectedElements,
           earnedPoints: 0,
           pointCalculationDetails: null,
           submittedAt: new Date(),
@@ -117,6 +120,9 @@ export class MissionVerificationService {
         });
       } else {
         missionReview.aiVerificationStatus = status;
+        missionReview.aiConfidence = verificationResult.confidence;
+        missionReview.aiReasoning = verificationResult.reasoning;
+        missionReview.aiDetectedElements = verificationResult.detectedElements;
         missionReview.submittedAt = new Date();
         missionReview.verifiedAt = new Date(); // Since status is always APPROVED or REJECTED here
       }
@@ -239,6 +245,13 @@ export class MissionVerificationService {
     return {
       status: missionReview.aiVerificationStatus,
       verifiedAt: missionReview.verifiedAt?.toISOString() || null,
+      photoUrls: missionReview.photoUrls || [],
+      photoUrl: missionReview.photoUrls && missionReview.photoUrls.length > 0 ? missionReview.photoUrls[0] : null,
+      rating: missionReview.rating,
+      reviewText: missionReview.reviewText,
+      confidence: missionReview.aiConfidence,
+      reasoning: missionReview.aiReasoning,
+      detectedElements: missionReview.aiDetectedElements,
     };
   }
 

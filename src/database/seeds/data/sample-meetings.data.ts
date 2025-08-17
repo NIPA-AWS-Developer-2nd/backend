@@ -299,9 +299,283 @@ export const seedSampleMeetings = async (
     }
 
     logger.info('✅ Mission reviews 레코드 생성 완료');
+
+    // 더미 사용자들로만 구성된 추가 모임들 생성
+    await createDummyUserMeetings(
+      dataSource,
+      missions,
+      logger,
+      userRepository,
+      meetingRepository,
+      participantRepository,
+      queryRunner,
+    );
+
   } finally {
     await queryRunner.release();
   }
 
   logger.info('🎭 시연용 모임 데이터 생성 완료');
+};
+
+// 더미 사용자들로만 구성된 추가 모임들 생성
+const createDummyUserMeetings = async (
+  dataSource: DataSource,
+  missions: Mission[],
+  logger: winston.Logger,
+  userRepository: any,
+  meetingRepository: any,
+  participantRepository: any,
+  queryRunner: any,
+) => {
+  // 더미 사용자들 가져오기 (테스트 계정 제외)
+  const dummyUsers = await userRepository
+    .createQueryBuilder('user')
+    .where('user.phoneNumber NOT IN (:...testPhones)', {
+      testPhones: [
+        '01012345678',
+        '01011112222',
+        '01098765432',
+        '01087654321',
+        '01076543210',
+        '01065432109',
+        '01054321098',
+      ],
+    })
+    .getMany();
+
+  if (dummyUsers.length < 8) {
+    logger.warn('더미 사용자가 부족하여 추가 모임 생성을 건너뜁니다.');
+    return;
+  }
+
+  logger.info(`더미 사용자 ${dummyUsers.length}명으로 추가 모임 생성 시작`);
+
+  // 미션별로 한 사용자가 여러 모임에 참여하지 않도록 관리
+  const missionUserMap = new Map<string, Set<string>>();
+
+  // 각 미션에 대해 여러 모임 생성 (총 8-10개 정도)
+  const meetingConfigs = [
+    // 카페 미션 모임들
+    {
+      missionIndex: 0, // 송파구 카페 방문
+      maxParticipants: 6,
+      minimumParticipants: 3,
+      requiredPoints: 400,
+      rewardPoints: 600,
+      scheduledHoursFromNow: 6,
+      recruitHoursFromNow: 5,
+      status: MeetingStatus.RECRUITING,
+    },
+    {
+      missionIndex: 0, // 송파구 카페 방문
+      maxParticipants: 4,
+      minimumParticipants: 2,
+      requiredPoints: 400,
+      rewardPoints: 600,
+      scheduledHoursFromNow: 8,
+      recruitHoursFromNow: 7,
+      status: MeetingStatus.RECRUITING,
+    },
+    // 맛집 미션 모임들
+    {
+      missionIndex: 1, // 송파구 맛집 방문하기
+      maxParticipants: 6,
+      minimumParticipants: 4,
+      requiredPoints: 800,
+      rewardPoints: 1200,
+      scheduledHoursFromNow: 5,
+      recruitHoursFromNow: 4,
+      status: MeetingStatus.RECRUITING,
+    },
+    {
+      missionIndex: 1, // 송파구 맛집 방문하기
+      maxParticipants: 5,
+      minimumParticipants: 3,
+      requiredPoints: 800,
+      rewardPoints: 1200,
+      scheduledHoursFromNow: 12,
+      recruitHoursFromNow: 10,
+      status: MeetingStatus.RECRUITING,
+    },
+    // 박물관 미션 모임
+    {
+      missionIndex: 2, // 송파구 박물관 탐방
+      maxParticipants: 6,
+      minimumParticipants: 3,
+      requiredPoints: 1200,
+      rewardPoints: 1800,
+      scheduledHoursFromNow: 24,
+      recruitHoursFromNow: 20,
+      status: MeetingStatus.RECRUITING,
+    },
+    // 센터필드 카공 미션 모임들
+    {
+      missionIndex: 3, // 센터필드 카공 인증
+      maxParticipants: 3,
+      minimumParticipants: 2,
+      requiredPoints: 1200,
+      rewardPoints: 1800,
+      scheduledHoursFromNow: 7,
+      recruitHoursFromNow: 6,
+      status: MeetingStatus.RECRUITING,
+    },
+    {
+      missionIndex: 3, // 센터필드 카공 인증
+      maxParticipants: 3,
+      minimumParticipants: 2,
+      requiredPoints: 1200,
+      rewardPoints: 1800,
+      scheduledHoursFromNow: 14,
+      recruitHoursFromNow: 12,
+      status: MeetingStatus.RECRUITING,
+    },
+    // 전통시장 미션 모임
+    {
+      missionIndex: 4, // 송파 전통시장 장보기
+      maxParticipants: 4,
+      minimumParticipants: 3,
+      requiredPoints: 400,
+      rewardPoints: 600,
+      scheduledHoursFromNow: 9,
+      recruitHoursFromNow: 8,
+      status: MeetingStatus.RECRUITING,
+    },
+    // 석촌호수 생태 체험 모임
+    {
+      missionIndex: 5, // 석촌호수 생태 체험
+      maxParticipants: 4,
+      minimumParticipants: 3,
+      requiredPoints: 400,
+      rewardPoints: 600,
+      scheduledHoursFromNow: 18,
+      recruitHoursFromNow: 16,
+      status: MeetingStatus.RECRUITING,
+    },
+    // 석촌호수 엄지척 챌린지 모임
+    {
+      missionIndex: 6, // 석촌호수 엄지척 챌린지
+      maxParticipants: 4,
+      minimumParticipants: 3,
+      requiredPoints: 400,
+      rewardPoints: 600,
+      scheduledHoursFromNow: 11,
+      recruitHoursFromNow: 10,
+      status: MeetingStatus.RECRUITING,
+    },
+  ];
+
+  // 더미 사용자들을 랜덤하게 섞기
+  const shuffledUsers = [...dummyUsers].sort(() => 0.5 - Math.random());
+  let userIndex = 0;
+
+  for (let i = 0; i < meetingConfigs.length; i++) {
+    const config = meetingConfigs[i];
+    
+    if (config.missionIndex >= missions.length) {
+      logger.warn(`미션 인덱스 ${config.missionIndex}가 범위를 벗어났습니다.`);
+      continue;
+    }
+
+    const mission = missions[config.missionIndex];
+    const missionId = mission.id;
+
+    // 이 미션에 대한 사용자 세트 초기화
+    if (!missionUserMap.has(missionId)) {
+      missionUserMap.set(missionId, new Set());
+    }
+    const usedUsersForMission = missionUserMap.get(missionId)!;
+
+    // 이 모임을 위한 참가자들 선별 (이미 이 미션에 참여한 사용자는 제외)
+    const availableUsers = shuffledUsers.filter(
+      user => !usedUsersForMission.has(user.id)
+    );
+
+    if (availableUsers.length < config.minimumParticipants) {
+      logger.warn(`미션 "${mission.title}"에 대한 가용 사용자가 부족합니다.`);
+      continue;
+    }
+
+    // 참가자 수 결정 (최소 1자리는 비워두기)
+    const participantCount = Math.min(
+      config.maxParticipants - 1, // 최소 1자리는 비워두기
+      Math.max(
+        config.minimumParticipants,
+        Math.floor(Math.random() * (config.maxParticipants - config.minimumParticipants + 1)) + config.minimumParticipants
+      )
+    );
+
+    const selectedUsers = availableUsers.slice(0, participantCount);
+    
+    if (selectedUsers.length === 0) {
+      continue;
+    }
+
+    // 호스트는 첫 번째 사용자
+    const hostUser = selectedUsers[0];
+    const participants = selectedUsers.slice(1);
+
+    // 선택된 사용자들을 이 미션의 사용자 세트에 추가
+    selectedUsers.forEach(user => usedUsersForMission.add(user.id));
+
+    const meetingId = ulid();
+    const meeting = meetingRepository.create({
+      id: meetingId,
+      hostUserId: hostUser.id,
+      missionId: mission.id,
+      scheduledAt: new Date(Date.now() + config.scheduledHoursFromNow * 60 * 60 * 1000),
+      recruitUntil: new Date(Date.now() + config.recruitHoursFromNow * 60 * 60 * 1000),
+      status: config.status,
+      maxParticipants: config.maxParticipants,
+      minimumParticipants: config.minimumParticipants,
+      requiredPoints: config.requiredPoints,
+      rewardPoints: config.rewardPoints,
+      introduction: `🎯 ${mission.title} 함께 도전해요! 새로운 사람들과 즐거운 경험을 만들어봐요 ✨`,
+      focusScore: Math.floor(Math.random() * 30) + 70, // 70-99 사이
+    });
+    await meetingRepository.save(meeting);
+
+    // meeting_profiles 테이블에 추가
+    await queryRunner.query(
+      `INSERT INTO meeting_profiles ("meetingId", introduction, "focusScore", "hostStake", "participantStake")
+       VALUES ($1, $2, $3, $4, $5)`,
+      [
+        meetingId,
+        `${mission.title}을 함께 즐기며 새로운 인연을 만들어가요! 적극적인 참여와 긍정적인 에너지로 함께해요 🌟`,
+        meeting.focusScore,
+        config.rewardPoints,
+        config.requiredPoints,
+      ],
+    );
+
+    // 호스트 참가
+    await participantRepository.save({
+      meetingId,
+      userId: hostUser.id,
+      isHost: true,
+      status: ParticipantStatus.JOINED,
+      pointsPaid: true,
+      paidAmount: config.rewardPoints,
+      paymentTransactionId: ulid(),
+    });
+
+    // 다른 참가자들 추가
+    for (const participant of participants) {
+      await participantRepository.save({
+        meetingId,
+        userId: participant.id,
+        isHost: false,
+        status: ParticipantStatus.JOINED,
+        pointsPaid: true,
+        paidAmount: config.requiredPoints,
+        paymentTransactionId: ulid(),
+      });
+    }
+
+    logger.info(
+      `✅ 더미 사용자 모임 생성: "${mission.title}" (${selectedUsers.length}/${config.maxParticipants}명)`
+    );
+  }
+
+  logger.info('✅ 더미 사용자 모임들 생성 완료');
 };

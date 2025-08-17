@@ -102,6 +102,100 @@ const missionData: MissionSeedData[] = [
     ],
   },
   {
+    id: '01K2X11W2GZ5EVGP21P26KF47G',
+    title: '센터필드 카공 인증: 상호 텍스트 + 노트북 3대',
+    description:
+      '송파구 소재 카페(센터필드 표기)에서 상호 텍스트 인증 후, 팀원들이 함께 카공하는 모습을 노트북 3대 이상으로 인증하는 2단계 미션입니다. 얼굴은 나오지 않게 촬영하세요.',
+    basePoints: 1500,
+    estimatedDuration: 40,
+    participants: 3,
+    minimumDuration: 20,
+    difficulty: MissionDifficulty.VERY_EASY,
+    thumbnailUrl:
+      'https://halsaram-prompts.s3.ap-northeast-2.amazonaws.com/thumbnail/test-cafestudy-001_1.jpg',
+    categorySlug: 'cafe',
+    photoVerificationGuide:
+      '1단계: 컵홀더/메뉴/영수증 등에서 \'센터필드\' 텍스트가 읽히도록 근접 촬영(얼굴 미노출).\n2단계: 카페 테이블에서 노트북이 3대 이상 동시에 보이도록 프레이밍(얼굴/상반신 미노출).',
+    sampleImageUrls: [
+      'https://halsaram-prompts.s3.ap-northeast-2.amazonaws.com/guides/test-cafestudy-001_1.jpg',
+      'https://halsaram-prompts.s3.ap-northeast-2.amazonaws.com/guides/test-cafestudy-001_2.jpeg',
+    ],
+    precautions: [
+      '매장 및 다른 손님 동선 방해 금지',
+      '얼굴 등 식별 정보가 프레임에 나오지 않도록 주의',
+      '점내 촬영 허용 범위 준수',
+    ],
+  },
+  {
+    id: '01K2VWTMZETYZK5NAG592MX3ZH',
+    title: '송파 전통시장 장보기',
+    description: '송파구 가락시장에서 전통 먹거리를 구매하고 인증하는 미션이에요.',
+    basePoints: 500,
+    estimatedDuration: 80,
+    participants: 4,
+    minimumDuration: 40,
+    difficulty: MissionDifficulty.EASY,
+    thumbnailUrl:
+      'https://halsaram-prompts.s3.ap-northeast-2.amazonaws.com/thumbnail/c89cedcf-a1ac-487b-9c23-43137bde09da_1.jpeg',
+    categorySlug: 'food',
+    photoVerificationGuide:
+      '시장 입구 간판 텍스트가 보이도록 촬영(손/소지품 중심, 얼굴 미노출)\n팀원 4명이 구매한 전통 먹거리를 들고 함께 촬영(손/소지품 중심, 얼굴 미노출)',
+    sampleImageUrls: [
+      'https://halsaram-prompts.s3.ap-northeast-2.amazonaws.com/guides/c89cedcf-a1ac-487b-9c23-43137bde09da_1.jpg',
+      'https://halsaram-prompts.s3.ap-northeast-2.amazonaws.com/guides/c89cedcf-a1ac-487b-9c23-43137bde09da_2.jpg',
+    ],
+    precautions: [
+      '다른 방문객들에게 방해가 되지 않도록 주의해주세요.',
+      '상인분들께 예의를 지켜주세요.',
+    ],
+  },
+  {
+    id: '01K2VWTKP86C34W3EWPJD5YPFD',
+    title: '석촌호수 생태 체험',
+    description: '석촌호수 생태공원에서 반려견과 함께 자연을 즐기는 미션이에요.',
+    basePoints: 500,
+    estimatedDuration: 60,
+    participants: 4,
+    minimumDuration: 30,
+    difficulty: MissionDifficulty.EASY,
+    thumbnailUrl:
+      'https://halsaram-prompts.s3.ap-northeast-2.amazonaws.com/thumbnail/81c07b90-ab53-4cc4-8640-5ce643173d8a_1.png',
+    categorySlug: 'culture',
+    photoVerificationGuide:
+      '호수 입구에 있는 안내판 텍스트가 보이도록 촬영(손/소지품 중심, 얼굴 미노출)\n팀원 4명과 반려견이 함께 산책하는 모습을 촬영(반려견과 핸드프린트만 나오도록, 얼굴 미노출)',
+    sampleImageUrls: [
+      'https://halsaram-prompts.s3.ap-northeast-2.amazonaws.com/guides/81c07b90-ab53-4cc4-8640-5ce643173d8a_2.jpeg',
+      'https://halsaram-prompts.s3.ap-northeast-2.amazonaws.com/guides/81c07b90-ab53-4cc4-8640-5ce643173d8a_2.jpg',
+    ],
+    precautions: [
+      '반려견 배변봉투와 목줄을 꼭 지참해주세요.',
+      '다른 방문객들에게 방해가 되지 않도록 주의해주세요.',
+    ],
+  },
+  {
+    id: '01K2VWTMFZN00F4CNRASJVECNJ',
+    title: '석촌호수 엄지척 챌린지',
+    description: '석촌호수를 배경으로 4명이 함께 엄지척 포즈를 완성하는 미션이에요.',
+    basePoints: 500,
+    estimatedDuration: 30,
+    participants: 4,
+    minimumDuration: 15,
+    difficulty: MissionDifficulty.EASY,
+    thumbnailUrl:
+      'https://halsaram-prompts.s3.ap-northeast-2.amazonaws.com/thumbnail/test-seokchon-thumbsup-001_1.jpg',
+    categorySlug: 'culture',
+    photoVerificationGuide:
+      '석촌호수 보이도록 촬영(얼굴 미노출).\n팀원 4명이 동시에 엄지척을 내밀고, 4개의 엄지가 모두 보이도록 촬영(손만 프레임).',
+    sampleImageUrls: [
+      'https://halsaram-prompts.s3.ap-northeast-2.amazonaws.com/guides/test-seokchon-thumbsup-001_1.jpg',
+      'https://halsaram-prompts.s3.ap-northeast-2.amazonaws.com/guides/test-seokchon-thumbsup-001_2.jpg',
+    ],
+    precautions: [
+      '주변 산책객에게 방해되지 않게 서서 촬영해주세요.',
+      '얼굴은 나오지 않게, 손만 나오도록 주의해주세요.',
+    ],
+  },
+  {
     id: '01JG9H7E2JQMC8GN1VKXR6W3TC',
     title: '송파구 롯데월드 어트랙션 체험',
     description:
@@ -154,6 +248,30 @@ const missionData: MissionSeedData[] = [
       '준비운동을 충분히 하고 시작하세요',
       '개인 체력에 맞춰 무리하지 마세요',
       '수분 보충용 물을 꼭 준비하세요',
+    ],
+  },
+  {
+    id: '01K2VWTMX54MN0CFZDEEX5J2NT',
+    title: '잠실 한강변 세 가지 색',
+    description: '잠실 한강변에서 조깅, 자전거, 팀 포즈 세 가지를 인증하는 미션이에요.',
+    basePoints: 500,
+    estimatedDuration: 100,
+    participants: 6,
+    minimumDuration: 50,
+    difficulty: MissionDifficulty.HARD,
+    thumbnailUrl:
+      'https://halsaram-prompts.s3.ap-northeast-2.amazonaws.com/thumbnail/98b62638-6a47-48e8-83aa-900f3813bac8_1.jpeg',
+    categorySlug: 'sports',
+    photoVerificationGuide:
+      '한강 조깅 코스 안내판 텍스트가 보이도록 촬영(손/소지품 중심, 얼굴 미노출)\n자전거 도로를 달리는 팀원들의 모습을 촬영(발/자전거 중심, 얼굴 미노출)\n팀원 6명이 삼각형 포즈를 취한 모습을 촬영(손/소지품 중심, 얼굴 미노출)',
+    sampleImageUrls: [
+      'https://halsaram-prompts.s3.ap-northeast-2.amazonaws.com/guides/98b62638-6a47-48e8-83aa-900f3813bac8_1.jpg',
+      'https://halsaram-prompts.s3.ap-northeast-2.amazonaws.com/guides/98b62638-6a47-48e8-83aa-900f3813bac8_2.jpg',
+      'https://halsaram-prompts.s3.ap-northeast-2.amazonaws.com/guides/98b62638-6a47-48e8-83aa-900f3813bac8_3.png',
+    ],
+    precautions: [
+      '안전하게 활동해주세요.',
+      '다른 방문객들에게 방해되지 않도록 주의해주세요.',
     ],
   },
 ];
