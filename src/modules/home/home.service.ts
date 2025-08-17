@@ -54,6 +54,19 @@ export class HomeService {
     return result;
   }
 
+  private calculateLevelFromPoints(points: number): number {
+    if (points < 0) return 1;
+
+    if (points < 100) return 1;
+    if (points < 300) return 2;
+    if (points < 600) return 3;
+    if (points < 1000) return 4;
+    if (points < 1500) return 5;
+
+    // 레벨 6부터는 매 500점씩
+    return Math.floor((points - 1500) / 500) + 6;
+  }
+
   // 내 모임 상세 정보 조회
   async getMyMeetingDetail(userId: string, meetingId: string): Promise<any> {
     this.logger.log(
@@ -161,7 +174,9 @@ export class HomeService {
             id: meeting.host.id,
             nickname: meeting.host.profile.nickname,
             profileImageUrl: meeting.host.profile.profileImageUrl,
-            level: Math.floor((meeting.host.profile.points || 0) / 100) + 1,
+            level: this.calculateLevelFromPoints(
+              meeting.host.profile.points || 0,
+            ),
             mbti: meeting.host.profile.mbti,
             bio: meeting.host.profile.bio,
           }
@@ -170,7 +185,7 @@ export class HomeService {
         id: p.user?.id || '',
         nickname: p.user?.profile?.nickname || '익명',
         profileImageUrl: p.user?.profile?.profileImageUrl || '',
-        level: Math.floor((p.user?.profile?.points || 0) / 100) + 1,
+        level: this.calculateLevelFromPoints(p.user?.profile?.points || 0),
         mbti: p.user?.profile?.mbti,
         bio: p.user?.profile?.bio,
         isHost: p.user?.id === meeting.hostUserId,
@@ -210,19 +225,19 @@ export class HomeService {
     limit: number,
   ): Promise<HotMeeting[]> {
     // 전체 recruiting 모임 개수 확인
-    const totalRecruitingCount = await this.meetingRepository.count({
+    const _totalRecruitingCount = await this.meetingRepository.count({
       where: { status: MeetingStatus.RECRUITING },
     });
 
     // 마감이 지나지 않은 recruiting 모임 개수 확인
-    const activeRecruitingCount = await this.meetingRepository
+    const _activeRecruitingCount = await this.meetingRepository
       .createQueryBuilder('meeting')
       .where('meeting.status = :status', { status: MeetingStatus.RECRUITING })
       .andWhere('meeting.recruitUntil > :now', { now: new Date() })
       .getCount();
 
     // 호스트가 다른 recruiting 모임 개수 확인
-    const otherHostCount = await this.meetingRepository
+    const _otherHostCount = await this.meetingRepository
       .createQueryBuilder('meeting')
       .where('meeting.status = :status', { status: MeetingStatus.RECRUITING })
       .andWhere('meeting.recruitUntil > :now', { now: new Date() })
@@ -300,7 +315,9 @@ export class HomeService {
                 id: meeting.host.id,
                 nickname: meeting.host.profile.nickname,
                 profileImageUrl: meeting.host.profile.profileImageUrl,
-                level: Math.floor((meeting.host.profile.points || 0) / 100) + 1, // 포인트로 레벨 계산
+                level: this.calculateLevelFromPoints(
+                  meeting.host.profile.points || 0,
+                ), // 포인트로 레벨 계산
                 mbti: meeting.host.profile.mbti,
                 bio: meeting.host.profile.bio,
               }
@@ -571,7 +588,7 @@ export class HomeService {
         .orderBy('log.createdAt', 'DESC')
         .limit(limit)
         .getMany();
-    } catch (error) {
+    } catch {
       // Activity logs table doesn't exist yet, return empty array
       this.logger.warn('Activity logs table not found, returning empty array');
       return [];

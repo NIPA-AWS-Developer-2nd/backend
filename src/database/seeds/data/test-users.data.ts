@@ -28,17 +28,21 @@ export const seedTestUsers = async (
     where: { districtName: '송파구', isActive: true },
   });
 
-  const firstInterest = await userInterestsRepository.findOne({
-    where: { slug: 'food_tour' },
-  });
-  const firstHashtag = await userHashtagsRepository.findOne({
-    where: { name: '#웃음이넘치는' },
-  });
+  const allInterests = await userInterestsRepository.find();
+  const allHashtags = await userHashtagsRepository.find();
 
-  if (!songpaDistrict || !firstInterest || !firstHashtag) {
+  if (!songpaDistrict || allInterests.length < 6 || allHashtags.length < 6) {
     logger.warn('필수 데이터가 부족하여 테스트 사용자 생성을 건너뜁니다.');
     return;
   }
+
+  // 호스트용 관심사와 해시태그 6개씩 선택
+  const hostInterests = allInterests.slice(0, 6).map(interest => interest.id);
+  const hostHashtags = allHashtags.slice(0, 6).map(hashtag => hashtag.id);
+
+  // 참가자용 관심사와 해시태그 6개씩 선택 (다른 조합)
+  const participantInterests = allInterests.slice(3, 9).map(interest => interest.id);
+  const participantHashtags = allHashtags.slice(3, 9).map(hashtag => hashtag.id);
 
   const hostUserExists = await userRepository.findOne({
     where: { phoneNumber: '01012345678' },
@@ -66,8 +70,8 @@ export const seedTestUsers = async (
       birthYear: 1995,
       gender: Gender.MALE,
       mbti: 'ENFJ',
-      interestIds: [firstInterest.id],
-      hashtagIds: [firstHashtag.id],
+      interestIds: hostInterests,
+      hashtagIds: hostHashtags,
       districtId: songpaDistrict.id,
       points: 15000,
     });
@@ -108,8 +112,8 @@ export const seedTestUsers = async (
       birthYear: 1998,
       gender: Gender.FEMALE,
       mbti: 'ENFP',
-      interestIds: [firstInterest.id],
-      hashtagIds: [firstHashtag.id],
+      interestIds: participantInterests,
+      hashtagIds: participantHashtags,
       districtId: songpaDistrict.id,
       points: 12000,
     });
@@ -159,6 +163,16 @@ export const seedTestUsers = async (
     });
     const nickname = nicknameResult.nickname;
 
+    // 각 시연용 참가자별로 다른 관심사와 해시태그 6개씩 선택
+    const demoInterests = allInterests
+      .sort(() => 0.5 - Math.random())
+      .slice(0, 6)
+      .map(interest => interest.id);
+    const demoHashtags = allHashtags
+      .sort(() => 0.5 - Math.random())
+      .slice(0, 6)
+      .map(hashtag => hashtag.id);
+
     const user = userRepository.create({
       id: userId,
       phoneNumber,
@@ -177,8 +191,8 @@ export const seedTestUsers = async (
       birthYear: participantData.birthYear,
       gender: participantData.gender,
       mbti: participantData.mbti,
-      interestIds: [firstInterest.id],
-      hashtagIds: [firstHashtag.id],
+      interestIds: demoInterests,
+      hashtagIds: demoHashtags,
       districtId: songpaDistrict.id,
       points: participantData.points,
     });

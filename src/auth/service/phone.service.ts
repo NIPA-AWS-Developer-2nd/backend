@@ -39,7 +39,9 @@ export class PhoneService {
   ) {}
 
   // 인증 코드 발송
-  async sendVerificationCode(phoneNumber: string): Promise<PhoneVerificationResult> {
+  async sendVerificationCode(
+    phoneNumber: string,
+  ): Promise<PhoneVerificationResult> {
     // 전화번호 형식 검증
     if (!/^\d{11}$/.test(phoneNumber)) {
       throw new BadRequestException('올바른 전화번호 형식이 아닙니다.');
@@ -53,26 +55,29 @@ export class PhoneService {
     // 5분 후 만료
     const expiresAt = new Date(Date.now() + 5 * TIME_MULTIPLIERS.m);
 
-    // TODO: Cool SMS를 통한 실제 SMS 발송 (현재 주석처리)
-    // const smsResult = await this.smsService.sendVerificationCode(
-    //   phoneNumber,
-    //   verificationCode,
-    // );
-
-    // if (!smsResult.success) {
-    //   this.logger.error('SMS 발송 실패', {
-    //     phoneNumber,
-    //     error: smsResult.message,
-    //     action: 'send_verification_code_failed',
-    //   });
-    //   throw new BadRequestException('SMS 발송에 실패했습니다. 잠시 후 다시 시도해주세요.');
-    // }
-
-    // 개발용: 콘솔에 인증코드 출력
-    this.logger.info(`[개발용] SMS 인증코드: ${verificationCode}`, {
+    // Cool SMS를 통한 실제 SMS 발송
+    const smsResult = await this.smsService.sendVerificationCode(
       phoneNumber,
       verificationCode,
-      action: 'development_sms_code',
+    );
+
+    if (!smsResult.success) {
+      this.logger.error('SMS 발송 실패', {
+        phoneNumber,
+        error: smsResult.message,
+        action: 'send_verification_code_failed',
+      });
+      throw new BadRequestException(
+        'SMS 발송에 실패했습니다. 잠시 후 다시 시도해주세요.',
+      );
+    }
+
+    // 개발용: 콘솔에 인증코드 출력 (SMS 발송과 함께 유지)
+    this.logger.info(`[SMS 발송 완료] 인증코드: ${verificationCode}`, {
+      phoneNumber,
+      verificationCode,
+      messageId: smsResult.messageId,
+      action: 'sms_sent_successfully',
     });
 
     // 메모리에 저장
