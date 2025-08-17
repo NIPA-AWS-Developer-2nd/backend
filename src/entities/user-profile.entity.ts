@@ -56,7 +56,7 @@ export class UserProfile {
   })
   gender: Gender | null;
 
-  @Column({ type: 'int', default: 0 })
+  @Column({ type: 'int', default: 500 })
   points: number;
 
   @CreateDateColumn()
