@@ -1,7 +1,7 @@
 import { DataSource } from 'typeorm';
 import * as winston from 'winston';
 import { ulid } from 'ulid';
-import { User, Mission, Meeting, MeetingParticipant } from '../../../entities';
+import { User, Mission, Meeting, MeetingParticipant, MissionReview } from '../../../entities';
 import { MeetingStatus } from '../../../entities/meeting.entity';
 import { ParticipantStatus } from '../../../entities/meeting-participant.entity';
 
@@ -13,15 +13,18 @@ export const seedSampleMeetings = async (
   const missionRepository = dataSource.getRepository(Mission);
   const meetingRepository = dataSource.getRepository(Meeting);
   const participantRepository = dataSource.getRepository(MeetingParticipant);
+  const missionReviewRepository = dataSource.getRepository(MissionReview);
 
   const missions = await missionRepository
     .createQueryBuilder('mission')
     .where('mission.isActive = :isActive', { isActive: true })
     .getMany();
 
-  // 미션 테이블의 첫 번째, 두 번째 미션 사용
+  // 미션 테이블의 첫 번째 미션과 지정된 미션 사용
   const firstMission = missions[0];
-  const secondMission = missions[1];
+  const secondMission = await missionRepository.findOne({
+    where: { id: '01K2VWTMFZN00F4CNRASJVECNJ' }
+  });
 
   if (!firstMission || !secondMission) {
     logger.warn(
@@ -76,8 +79,7 @@ export const seedSampleMeetings = async (
         minimumParticipants: 2,
         requiredPoints: 800,
         rewardPoints: 1200,
-        introduction:
-          `🎯 ${firstMission.title} 함께 해요! 새로운 사람들과 즐거운 시간을 보내며 미션을 완수해봐요 ✨`,
+        introduction: `🎯 ${firstMission.title} 함께 해요! 새로운 사람들과 즐거운 시간을 보내며 미션을 완수해봐요 ✨`,
         focusScore: 78,
       });
       await meetingRepository.save(firstMeeting);
@@ -147,8 +149,7 @@ export const seedSampleMeetings = async (
         minimumParticipants: 3,
         requiredPoints: 1000,
         rewardPoints: 1500,
-        introduction:
-          `🚀 ${secondMission.title} 도전하자! 함께 모여서 미션을 완성하고 새로운 경험을 만들어봐요 🎉`,
+        introduction: `🚀 ${secondMission.title} 도전하자! 함께 모여서 미션을 완성하고 새로운 경험을 만들어봐요 🎉`,
         focusScore: 92,
       });
       await meetingRepository.save(secondMeeting);
@@ -218,7 +219,13 @@ export const seedSampleMeetings = async (
     await queryRunner.query(
       `INSERT INTO meeting_profiles ("meetingId", introduction, "focusScore", "hostStake", "participantStake")
        VALUES ($1, $2, $3, $4, $5)`,
-      [testMeetingId, `${secondMission.title} QR 코드 테스트를 위한 모임입니다`, 85, 2000, 1000],
+      [
+        testMeetingId,
+        `${secondMission.title} QR 코드 테스트를 위한 모임입니다`,
+        85,
+        2000,
+        1000,
+      ],
     );
 
     // 호스트와 참가자 추가
@@ -263,6 +270,35 @@ export const seedSampleMeetings = async (
     }
 
     logger.info('✅ QR 코드 테스트용 모임 생성 완료 (총 4명 참가)');
+
+    // 활성 상태인 테스트 모임의 참가자들에 대해 mission_reviews 레코드 생성
+    const testMeetingParticipants = await participantRepository.find({
+      where: { meetingId: testMeetingId },
+    });
+
+    logger.info('📝 테스트 모임 참가자들의 mission_reviews 생성 중...');
+    
+    for (const participant of testMeetingParticipants) {
+      // 기존 레코드가 있으면 삭제
+      await missionReviewRepository.delete({
+        meetingId: testMeetingId,
+        userId: participant.userId 
+      });
+
+      // 새로 생성
+      await missionReviewRepository.save({
+        meetingId: testMeetingId,
+        userId: participant.userId,
+        reviewText: null,
+        rating: null,
+        photoUrls: [],
+        earnedPoints: 0,
+        pointCalculationDetails: null,
+        verifiedAt: null,
+      });
+    }
+
+    logger.info('✅ Mission reviews 레코드 생성 완료');
   } finally {
     await queryRunner.release();
   }

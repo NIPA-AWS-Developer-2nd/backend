@@ -117,10 +117,13 @@ export class PointService {
             userId,
             amount,
             '모임 참여비 결제',
-            meetingId
+            meetingId,
           );
         } catch (error) {
-          this.logger.error('Failed to send point deduction notification:', error);
+          this.logger.error(
+            'Failed to send point deduction notification:',
+            error,
+          );
         }
       });
 
@@ -201,7 +204,7 @@ export class PointService {
             userId,
             amount,
             '모임 완료 보상',
-            meetingId
+            meetingId,
           );
         } catch (error) {
           this.logger.error('Failed to send point reward notification:', error);
@@ -331,10 +334,13 @@ export class PointService {
             userId,
             actualPenalty,
             '노쇼 패널티',
-            meetingId
+            meetingId,
           );
         } catch (error) {
-          this.logger.error('Failed to send no-show penalty notification:', error);
+          this.logger.error(
+            'Failed to send no-show penalty notification:',
+            error,
+          );
         }
       });
 

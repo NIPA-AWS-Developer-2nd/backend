@@ -1,8 +1,32 @@
-import { Controller, Post, Get, Body, Query, Request, UseGuards } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import {
+  Controller,
+  Post,
+  Get,
+  Body,
+  Query,
+  Request,
+  UseGuards,
+  UploadedFile,
+  UseInterceptors,
+  ParseFilePipe,
+  MaxFileSizeValidator,
+  FileTypeValidator,
+} from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+  ApiConsumes,
+} from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { MissionVerificationService } from './mission-verification.service';
-import { VerifyMissionDto, SubmitMissionDto } from './dto/mission-verification.dto';
+import {
+  VerifyMissionDto,
+  SubmitMissionDto,
+  UploadVerificationPhotoDto,
+} from './dto/mission-verification.dto';
 import { ApiResponseDto } from '../../common/dto/api-response.dto';
 
 @ApiTags('Mission Verification')
@@ -13,6 +37,54 @@ export class MissionVerificationController {
   constructor(
     private readonly missionVerificationService: MissionVerificationService,
   ) {}
+
+  @Post('verify/photo')
+  @UseInterceptors(FileInterceptor('photo'))
+  @ApiConsumes('multipart/form-data')
+  @ApiOperation({
+    summary: '미션 사진 업로드 및 AI 인증',
+    description: '미션 사진을 업로드하고 Bedrock Claude로 즉시 검증합니다.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: '미션 사진 인증 성공',
+    example: {
+      status: 200,
+      message: '미션 사진이 인증되었습니다.',
+      result: true,
+      data: {
+        reviewId: 123,
+        status: 'approved',
+        confidence: 95,
+        reasoning: '사진에 사람이 명확히 보이고 미션 요구사항을 충족합니다.',
+        detectedElements: ['사람', '음식', '식당'],
+        verifiedAt: '2024-01-01T10:00:00Z',
+      },
+    },
+  })
+  async uploadAndVerifyPhoto(
+    @UploadedFile(
+      new ParseFilePipe({
+        validators: [
+          new MaxFileSizeValidator({ maxSize: 10 * 1024 * 1024 }), // 10MB
+          new FileTypeValidator({ fileType: /(jpg|jpeg|png|webp)$/ }),
+        ],
+      }),
+    )
+    photo: Express.Multer.File,
+    @Body() uploadDto: UploadVerificationPhotoDto,
+    @Request() req: any,
+  ) {
+    const userId = req.user.id;
+    const result =
+      await this.missionVerificationService.uploadAndVerifyMissionPhoto(
+        userId,
+        uploadDto,
+        photo,
+      );
+
+    return ApiResponseDto.success(result, '미션 사진이 인증되었습니다.');
+  }
 
   @Post('verify')
   @ApiOperation({
@@ -29,8 +101,8 @@ export class MissionVerificationController {
       data: {
         status: 'approved', // 'approved' | 'rejected' | 'pending'
         verifiedAt: '2024-01-01T10:00:00Z',
-      }
-    }
+      },
+    },
   })
   async verifyMission(
     @Body() verifyMissionDto: VerifyMissionDto,
@@ -41,7 +113,7 @@ export class MissionVerificationController {
       userId,
       verifyMissionDto,
     );
-    
+
     return ApiResponseDto.success(result, '미션 인증이 요청되었습니다.');
   }
 
@@ -60,8 +132,8 @@ export class MissionVerificationController {
       data: {
         status: 'approved',
         verifiedAt: '2024-01-01T10:00:00Z',
-      }
-    }
+      },
+    },
   })
   async getVerificationStatus(
     @Query('meetingId') meetingId: string,
@@ -72,7 +144,7 @@ export class MissionVerificationController {
       userId,
       meetingId,
     );
-    
+
     return ApiResponseDto.success(result, '인증 상태를 조회했습니다.');
   }
 
@@ -91,8 +163,8 @@ export class MissionVerificationController {
       data: {
         reviewId: 'review-id',
         submittedAt: '2024-01-01T10:00:00Z',
-      }
-    }
+      },
+    },
   })
   async submitMission(
     @Body() submitMissionDto: SubmitMissionDto,
@@ -103,7 +175,7 @@ export class MissionVerificationController {
       userId,
       submitMissionDto,
     );
-    
+
     return ApiResponseDto.success(result, '미션 리뷰가 제출되었습니다.');
   }
 }

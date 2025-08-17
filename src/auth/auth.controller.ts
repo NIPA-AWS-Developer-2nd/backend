@@ -229,7 +229,9 @@ export class AuthController {
     @Body() body: PhoneVerificationRequest,
   ): Promise<PhoneVerificationResult> {
     try {
-      const result = await this.authService.sendVerificationCode(body.phoneNumber);
+      const result = await this.authService.sendVerificationCode(
+        body.phoneNumber,
+      );
       return result;
     } catch (error: unknown) {
       this.logger.error('전화번호 인증 코드 발송 실패', {

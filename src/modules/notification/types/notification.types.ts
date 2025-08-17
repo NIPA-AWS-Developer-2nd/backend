@@ -1,4 +1,7 @@
-import { NotificationType, NotificationStatus } from '../../../entities/notification.entity';
+import {
+  NotificationType,
+  NotificationStatus,
+} from '../../../entities/notification.entity';
 
 export interface PushSubscriptionData {
   endpoint: string;

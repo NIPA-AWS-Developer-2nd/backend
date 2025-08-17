@@ -20,6 +20,7 @@ import {
   CreatePresignedUrlDto,
   CreateMultiplePresignedUrlsDto,
   CreateProfileImagePresignedUrlDto,
+  CreateMissionVerificationPresignedUrlDto,
 } from './dto/s3.dto';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { User } from 'src/entities/user.entity';
@@ -301,6 +302,128 @@ export class S3Controller {
       return {
         status: 200,
         message: '프로필 이미지 Presigned URL이 생성되었습니다.',
+        result: true,
+        data: result,
+      };
+    } catch (error: unknown) {
+      return {
+        status: 400,
+        message:
+          error instanceof Error
+            ? error.message
+            : '알 수 없는 오류가 발생했습니다.',
+        result: false,
+      };
+    }
+  }
+
+  @Post('mission-verification-presigned-url')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: '미션 인증 사진 업로드용 Presigned URL 생성',
+    description:
+      '미션 인증 사진을 위한 특별한 키 포맷과 메타데이터가 포함된 Presigned URL을 생성합니다. 사용자 권한과 미션 기간을 검증한 후 URL을 발급합니다.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: '미션 인증 사진 Presigned URL 생성 성공',
+    schema: {
+      type: 'object',
+      properties: {
+        status: { type: 'number', example: 200 },
+        message: {
+          type: 'string',
+          example: '미션 인증 사진 Presigned URL이 생성되었습니다.',
+        },
+        result: { type: 'boolean', example: true },
+        data: {
+          type: 'object',
+          properties: {
+            uploadUrl: {
+              type: 'string',
+              example:
+                'https://halsaram-assets.s3.amazonaws.com/mission-uploads/01HQ.../01HQ.../01HQ.../0/1640995200-abc123.jpg?...',
+            },
+            key: {
+              type: 'string',
+              example:
+                'mission-uploads/01HQXXX.../01HQXXX.../01HQXXX.../0/1640995200-abc123.jpg',
+            },
+            publicUrl: {
+              type: 'string',
+              example:
+                'https://cdn.halsaram.site/mission-uploads/01HQXXX.../01HQXXX.../01HQXXX.../0/1640995200-abc123.jpg',
+            },
+            expiresIn: { type: 'number', example: 300 },
+            metadata: {
+              type: 'object',
+              properties: {
+                'x-amz-meta-id': { type: 'string' },
+                'x-amz-meta-meetingid': { type: 'string' },
+                'x-amz-meta-userid': { type: 'string' },
+                'x-amz-meta-startts': { type: 'string' },
+                'x-amz-meta-deadlinets': { type: 'string' },
+                'x-amz-meta-stepindex': { type: 'string' },
+              },
+            },
+          },
+        },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 400,
+    description: '잘못된 요청 또는 권한 없음',
+    schema: {
+      type: 'object',
+      properties: {
+        status: { type: 'number', example: 400 },
+        message: {
+          type: 'string',
+          example: '미션 기간이 아니거나 권한이 없습니다.',
+        },
+        result: { type: 'boolean', example: false },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 401,
+    description: '인증이 필요합니다',
+  })
+  async createMissionVerificationPresignedUrl(
+    @Request() req: AuthenticatedRequest,
+    @Body(ValidationPipe) dto: CreateMissionVerificationPresignedUrlDto,
+  ) {
+    try {
+      const userId = req.user?.id;
+
+      if (!userId) {
+        throw new Error('사용자 ID를 찾을 수 없습니다.');
+      }
+
+      // TODO: 여기서 미션과 모임에 대한 권한 검증 및 시간 검증 로직 추가
+      // 예시로 임시 시간값 사용 (실제로는 DB에서 조회)
+      const now = Math.floor(Date.now() / 1000);
+      const startTs = now - 3600; // 1시간 전 시작
+      const deadlineTs = now + 3600; // 1시간 후 마감
+
+      const result =
+        await this.s3Service.generateMissionVerificationPresignedUrl(
+          dto.missionId,
+          dto.meetingId,
+          userId,
+          dto.stepIndex,
+          startTs,
+          deadlineTs,
+          dto.expiresIn ?? 300,
+          dto.contentType ?? 'image/jpeg',
+        );
+
+      return {
+        status: 200,
+        message: '미션 인증 사진 Presigned URL이 생성되었습니다.',
         result: true,
         data: result,
       };

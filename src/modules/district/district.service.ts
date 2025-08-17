@@ -12,10 +12,10 @@ export class DistrictService {
 
   async findAll(): Promise<District[]> {
     return this.districtRepository.find({
-      order: { 
+      order: {
         isActive: 'DESC', // 활성화된 지역 먼저
-        city: 'ASC', 
-        districtName: 'ASC' 
+        city: 'ASC',
+        districtName: 'ASC',
       },
     });
   }

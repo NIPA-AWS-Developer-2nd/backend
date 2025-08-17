@@ -74,7 +74,7 @@ export class NotificationController {
     @Req() req: Request,
   ) {
     const userId = (req.user as any)?.id;
-    
+
     if (!userId) {
       return {
         status: HttpStatus.UNAUTHORIZED,
@@ -372,17 +372,18 @@ export class NotificationController {
   async createTestSubscription(@Param('userId') userId: string) {
     try {
       // 더미 구독 정보 직접 생성
-      const testSubscription = await this.pushNotificationService.saveSubscription(
-        userId,
-        {
-          endpoint: 'https://fcm.googleapis.com/fcm/send/test',
-          keys: {
-            p256dh: 'test-p256dh-key',
-            auth: 'test-auth-key'
-          }
-        },
-        'chrome'
-      );
+      const testSubscription =
+        await this.pushNotificationService.saveSubscription(
+          userId,
+          {
+            endpoint: 'https://fcm.googleapis.com/fcm/send/test',
+            keys: {
+              p256dh: 'test-p256dh-key',
+              auth: 'test-auth-key',
+            },
+          },
+          'chrome',
+        );
 
       return {
         status: HttpStatus.CREATED,
