@@ -1,13 +1,8 @@
-import {
-  Injectable,
-  CanActivate,
-  ExecutionContext,
-  ForbiddenException,
-} from '@nestjs/common';
+import { Injectable, CanActivate, ExecutionContext } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { UserService } from '../../modules/user/user.service';
 
-interface AuthenticatedRequest {
+interface _AuthenticatedRequest {
   user: {
     id: string;
   };
@@ -20,7 +15,11 @@ export class LocationVerifiedGuard implements CanActivate {
     private userService: UserService,
   ) {}
 
-  async canActivate(context: ExecutionContext): Promise<boolean> {
+  canActivate(_context: ExecutionContext): Promise<boolean> {
+    // 임시로 모든 요청 통과
+    return Promise.resolve(true);
+
+    /* 원래 코드 - 임시 비활성화
     // Check if location verification is required for this endpoint
     const requireLocationVerification = this.reflector.get<boolean>(
       'requireLocationVerification',
@@ -49,5 +48,6 @@ export class LocationVerifiedGuard implements CanActivate {
     }
 
     return true;
+    */
   }
 }

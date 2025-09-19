@@ -67,9 +67,39 @@ async function bootstrap() {
   );
 
   // CORS 설정
+  const corsOrigins = [
+    'http://localhost:5173',
+    'http://192.168.0.11:5173',
+    configService.get<string>('FRONTEND_URL'),
+  ].filter(Boolean);
+
   app.enableCors({
-    origin:
-      configService.get<string>('FRONTEND_URL') || 'http://localhost:5173',
+    origin: (
+      origin: string | undefined,
+      callback: (error: Error | null, allow?: boolean) => void,
+    ) => {
+      // origin이 없는 경우 (같은 도메인 요청) 허용
+      if (!origin) return callback(null, true);
+
+      // 개발 환경에서는 모든 IP 주소 허용
+      if (configService.get<string>('NODE_ENV') !== 'production') {
+        // IP 주소 패턴 매칭 (192.168.x.x:5173 또는 10.x.x.x:5173 등)
+        if (
+          /^http:\/\/(192\.168\.|10\.|172\.(1[6-9]|2[0-9]|3[01])\.)[\d.]+:5173$/.test(
+            origin,
+          )
+        ) {
+          return callback(null, true);
+        }
+      }
+
+      // 설정된 origin 목록에 있는지 확인
+      if (corsOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
     credentials: true,
   });
 
@@ -97,7 +127,7 @@ async function bootstrap() {
   }
 
   const port = configService.get<number>('PORT') || 3000;
-  await app.listen(port);
+  await app.listen(port, '0.0.0.0');
 
   const logger = app.get<Logger>(WINSTON_MODULE_NEST_PROVIDER);
   logger.log(`🚀 Application is running on port ${port}`);

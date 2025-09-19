@@ -39,14 +39,8 @@ export class SmsService {
     private configService: ConfigService,
     @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger,
   ) {
-    this.apiKey = this.configService.get<string>(
-      'COOLSMS_API_KEY',
-      'NCSCBGIAABEMV9WI',
-    );
-    this.apiSecret = this.configService.get<string>(
-      'COOLSMS_API_SECRET',
-      'TINUHINVBCFWALUEJTTOI8KQIEPOPBU6',
-    );
+    this.apiKey = this.configService.get<string>('COOLSMS_API_KEY');
+    this.apiSecret = this.configService.get<string>('COOLSMS_API_SECRET');
     this.fromNumber = this.configService.get<string>(
       'COOLSMS_FROM_NUMBER',
       '02-000-0000',

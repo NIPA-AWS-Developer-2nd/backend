@@ -6,3 +6,5 @@ export { seedMissions } from './missions.data';
 export { seedTestUsers, seedDummyUsers } from './test-users.data';
 export { seedSampleMeetings } from './sample-meetings.data';
 export { seedGiftCards } from './gift-cards.data';
+export { seedActivityLogs } from './activity-logs.data';
+export { seedMeetingLikes } from './meeting-likes.data';

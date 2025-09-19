@@ -300,6 +300,18 @@ export const seedSampleMeetings = async (
 
     logger.info('✅ Mission reviews 레코드 생성 완료');
 
+    // 테스트 계정 1의 과거 활동 내역 추가
+    await createTestUserPastActivities(
+      dataSource,
+      missions,
+      logger,
+      userRepository,
+      meetingRepository,
+      participantRepository,
+      missionReviewRepository,
+      queryRunner,
+    );
+
     // 더미 사용자들로만 구성된 추가 모임들 생성
     await createDummyUserMeetings(
       dataSource,
@@ -354,7 +366,7 @@ const createDummyUserMeetings = async (
   // 미션별로 한 사용자가 여러 모임에 참여하지 않도록 관리
   const missionUserMap = new Map<string, Set<string>>();
 
-  // 각 미션에 대해 여러 모임 생성 (총 8-10개 정도)
+  // 각 미션에 대해 여러 모임 생성 (총 15-20개 정도)
   const meetingConfigs = [
     // 카페 미션 모임들
     {
@@ -461,6 +473,87 @@ const createDummyUserMeetings = async (
       rewardPoints: 600,
       scheduledHoursFromNow: 11,
       recruitHoursFromNow: 10,
+      status: MeetingStatus.RECRUITING,
+    },
+    // 추가 번개모임들
+    {
+      missionIndex: 0, // 송파구 카페 방문
+      maxParticipants: 3,
+      minimumParticipants: 2,
+      requiredPoints: 400,
+      rewardPoints: 600,
+      scheduledHoursFromNow: 3,
+      recruitHoursFromNow: 2,
+      status: MeetingStatus.RECRUITING,
+    },
+    {
+      missionIndex: 1, // 송파구 맛집 방문하기
+      maxParticipants: 4,
+      minimumParticipants: 2,
+      requiredPoints: 800,
+      rewardPoints: 1200,
+      scheduledHoursFromNow: 6,
+      recruitHoursFromNow: 5,
+      status: MeetingStatus.RECRUITING,
+    },
+    {
+      missionIndex: 2, // 송파구 박물관 탐방
+      maxParticipants: 8,
+      minimumParticipants: 4,
+      requiredPoints: 1200,
+      rewardPoints: 1800,
+      scheduledHoursFromNow: 48,
+      recruitHoursFromNow: 36,
+      status: MeetingStatus.RECRUITING,
+    },
+    {
+      missionIndex: 3, // 센터필드 카공 인증
+      maxParticipants: 4,
+      minimumParticipants: 2,
+      requiredPoints: 1200,
+      rewardPoints: 1800,
+      scheduledHoursFromNow: 4,
+      recruitHoursFromNow: 3,
+      status: MeetingStatus.RECRUITING,
+    },
+    {
+      missionIndex: 4, // 송파 전통시장 장보기
+      maxParticipants: 5,
+      minimumParticipants: 3,
+      requiredPoints: 400,
+      rewardPoints: 600,
+      scheduledHoursFromNow: 15,
+      recruitHoursFromNow: 13,
+      status: MeetingStatus.RECRUITING,
+    },
+    {
+      missionIndex: 5, // 석촌호수 생태 체험
+      maxParticipants: 6,
+      minimumParticipants: 4,
+      requiredPoints: 400,
+      rewardPoints: 600,
+      scheduledHoursFromNow: 20,
+      recruitHoursFromNow: 18,
+      status: MeetingStatus.RECRUITING,
+    },
+    {
+      missionIndex: 0, // 송파구 카페 방문
+      maxParticipants: 5,
+      minimumParticipants: 3,
+      requiredPoints: 400,
+      rewardPoints: 600,
+      scheduledHoursFromNow: 10,
+      recruitHoursFromNow: 8,
+      status: MeetingStatus.RECRUITING,
+    },
+    {
+      missionIndex: 1, // 송파구 맛집 방문하기
+      maxParticipants: 3,
+      minimumParticipants: 2,
+      requiredPoints: 800,
+      rewardPoints: 1200,
+      scheduledHoursFromNow: 2,
+      recruitHoursFromNow: 1.5,
       status: MeetingStatus.RECRUITING,
     },
   ];
@@ -578,4 +671,304 @@ const createDummyUserMeetings = async (
   }
 
   logger.info('✅ 더미 사용자 모임들 생성 완료');
+};
+
+// 테스트 계정 1의 과거 활동 내역 생성
+const createTestUserPastActivities = async (
+  dataSource: DataSource,
+  missions: Mission[],
+  logger: winston.Logger,
+  userRepository: any,
+  meetingRepository: any,
+  participantRepository: any,
+  missionReviewRepository: any,
+  queryRunner: any,
+) => {
+  const testUser1 = await userRepository.findOne({
+    where: { phoneNumber: '01012345678' },
+  });
+
+  if (!testUser1) {
+    logger.warn('테스트 계정 1을 찾을 수 없어 과거 활동 생성을 건너뜁니다.');
+    return;
+  }
+
+  // 더미 사용자들 가져오기
+  const dummyUsers = await userRepository
+    .createQueryBuilder('user')
+    .where('user.phoneNumber NOT IN (:...testPhones)', {
+      testPhones: [
+        '01012345678',
+        '01011112222',
+        '01098765432',
+        '01087654321',
+        '01076543210',
+        '01065432109',
+        '01054321098',
+      ],
+    })
+    .getMany();
+
+  if (dummyUsers.length < 10) {
+    logger.warn('더미 사용자가 부족하여 과거 활동 생성을 건너뜁니다.');
+    return;
+  }
+
+  logger.info('테스트 계정 1의 과거 활동 내역 생성 시작...');
+
+  // 과거 활동 1: 카페 미션 (완료됨, 1주일 전)
+  const pastMeeting1Id = ulid();
+  const pastMeeting1 = meetingRepository.create({
+    id: pastMeeting1Id,
+    hostUserId: dummyUsers[0].id,
+    missionId: missions[0].id, // 카페 미션
+    scheduledAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
+    recruitUntil: new Date(Date.now() - 7.5 * 24 * 60 * 60 * 1000),
+    status: MeetingStatus.COMPLETED,
+    maxParticipants: 4,
+    minimumParticipants: 2,
+    requiredPoints: 400,
+    rewardPoints: 600,
+    introduction: '카페에서 즐거운 시간 보내요!',
+    focusScore: 85,
+  });
+  await meetingRepository.save(pastMeeting1);
+
+  // 호스트 참가
+  await participantRepository.save({
+    meetingId: pastMeeting1Id,
+    userId: dummyUsers[0].id,
+    isHost: true,
+    status: ParticipantStatus.JOINED,
+    pointsPaid: true,
+    paidAmount: 600,
+    paymentTransactionId: ulid(),
+  });
+
+  // 테스트 계정 1 참가
+  await participantRepository.save({
+    meetingId: pastMeeting1Id,
+    userId: testUser1.id,
+    isHost: false,
+    status: ParticipantStatus.JOINED,
+    pointsPaid: true,
+    paidAmount: 400,
+    paymentTransactionId: ulid(),
+  });
+
+  // 다른 참가자들
+  for (let i = 1; i < 3; i++) {
+    await participantRepository.save({
+      meetingId: pastMeeting1Id,
+      userId: dummyUsers[i].id,
+      isHost: false,
+      status: ParticipantStatus.JOINED,
+      pointsPaid: true,
+      paidAmount: 400,
+      paymentTransactionId: ulid(),
+    });
+  }
+
+  // 리뷰 추가
+  await missionReviewRepository.save({
+    meetingId: pastMeeting1Id,
+    userId: testUser1.id,
+    reviewText: '정말 즐거운 시간이었어요! 호스트님이 너무 친절하시고 카페 분위기도 좋았습니다. 다음에 또 참여하고 싶어요!',
+    rating: 5,
+    photoUrls: ['https://example.com/photo1.jpg', 'https://example.com/photo2.jpg'],
+    earnedPoints: 600,
+    pointCalculationDetails: { basePoints: 400, bonusPoints: 200 },
+    verifiedAt: new Date(Date.now() - 6.9 * 24 * 60 * 60 * 1000),
+  });
+
+  logger.info('✅ 과거 활동 1 생성 완료 (카페 미션)');
+
+  // 과거 활동 2: 맛집 미션 (완료됨, 3일 전) - 테스트 계정 1이 호스트
+  const pastMeeting2Id = ulid();
+  const pastMeeting2 = meetingRepository.create({
+    id: pastMeeting2Id,
+    hostUserId: testUser1.id, // 테스트 계정 1이 호스트
+    missionId: missions[1].id, // 맛집 미션
+    scheduledAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
+    recruitUntil: new Date(Date.now() - 3.5 * 24 * 60 * 60 * 1000),
+    status: MeetingStatus.COMPLETED,
+    maxParticipants: 5,
+    minimumParticipants: 3,
+    requiredPoints: 800,
+    rewardPoints: 1200,
+    introduction: '맛있는 음식 함께 먹어요!',
+    focusScore: 90,
+  });
+  await meetingRepository.save(pastMeeting2);
+
+  // 테스트 계정 1이 호스트
+  await participantRepository.save({
+    meetingId: pastMeeting2Id,
+    userId: testUser1.id,
+    isHost: true,
+    status: ParticipantStatus.JOINED,
+    pointsPaid: true,
+    paidAmount: 1200,
+    paymentTransactionId: ulid(),
+  });
+
+  // 참가자들
+  for (let i = 3; i < 7; i++) {
+    await participantRepository.save({
+      meetingId: pastMeeting2Id,
+      userId: dummyUsers[i].id,
+      isHost: false,
+      status: ParticipantStatus.JOINED,
+      pointsPaid: true,
+      paidAmount: 800,
+      paymentTransactionId: ulid(),
+    });
+
+    // 참가자들의 리뷰
+    await missionReviewRepository.save({
+      meetingId: pastMeeting2Id,
+      userId: dummyUsers[i].id,
+      reviewText: `호스트님이 정말 잘 이끌어주셨어요! 맛집도 좋았고 분위기도 최고였습니다.`,
+      rating: 4 + Math.floor(Math.random() * 2),
+      photoUrls: [],
+      earnedPoints: 1200,
+      pointCalculationDetails: { basePoints: 800, bonusPoints: 400 },
+      verifiedAt: new Date(Date.now() - 2.9 * 24 * 60 * 60 * 1000),
+    });
+  }
+
+  // 호스트 리뷰
+  await missionReviewRepository.save({
+    meetingId: pastMeeting2Id,
+    userId: testUser1.id,
+    reviewText: '멋진 사람들과 함께한 즐거운 식사였습니다. 모두 적극적으로 참여해주셔서 감사해요!',
+    rating: 5,
+    photoUrls: ['https://example.com/food1.jpg', 'https://example.com/food2.jpg', 'https://example.com/food3.jpg'],
+    earnedPoints: 1800,
+    pointCalculationDetails: { basePoints: 1200, bonusPoints: 600 },
+    verifiedAt: new Date(Date.now() - 2.9 * 24 * 60 * 60 * 1000),
+  });
+
+  logger.info('✅ 과거 활동 2 생성 완료 (맛집 미션 - 호스트)');
+
+  // 과거 활동 3: 카공 미션 (완료됨, 10일 전)
+  const pastMeeting3Id = ulid();
+  const pastMeeting3 = meetingRepository.create({
+    id: pastMeeting3Id,
+    hostUserId: dummyUsers[7].id,
+    missionId: missions[3].id, // 카공 미션
+    scheduledAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
+    recruitUntil: new Date(Date.now() - 10.5 * 24 * 60 * 60 * 1000),
+    status: MeetingStatus.COMPLETED,
+    maxParticipants: 3,
+    minimumParticipants: 2,
+    requiredPoints: 1200,
+    rewardPoints: 1800,
+    introduction: '함께 집중해서 공부해요!',
+    focusScore: 95,
+  });
+  await meetingRepository.save(pastMeeting3);
+
+  // 호스트 참가
+  await participantRepository.save({
+    meetingId: pastMeeting3Id,
+    userId: dummyUsers[7].id,
+    isHost: true,
+    status: ParticipantStatus.JOINED,
+    pointsPaid: true,
+    paidAmount: 1800,
+    paymentTransactionId: ulid(),
+  });
+
+  // 테스트 계정 1 참가
+  await participantRepository.save({
+    meetingId: pastMeeting3Id,
+    userId: testUser1.id,
+    isHost: false,
+    status: ParticipantStatus.JOINED,
+    pointsPaid: true,
+    paidAmount: 1200,
+    paymentTransactionId: ulid(),
+  });
+
+  // 리뷰 추가
+  await missionReviewRepository.save({
+    meetingId: pastMeeting3Id,
+    userId: testUser1.id,
+    reviewText: '조용한 분위기에서 집중할 수 있어서 좋았어요. 서로 동기부여가 되는 시간이었습니다.',
+    rating: 4,
+    photoUrls: [],
+    earnedPoints: 1800,
+    pointCalculationDetails: { basePoints: 1200, bonusPoints: 600 },
+    verifiedAt: new Date(Date.now() - 9.9 * 24 * 60 * 60 * 1000),
+  });
+
+  logger.info('✅ 과거 활동 3 생성 완료 (카공 미션)');
+
+  // 과거 활동 4: 전통시장 미션 (완료됨, 2주일 전)
+  const pastMeeting4Id = ulid();
+  const pastMeeting4 = meetingRepository.create({
+    id: pastMeeting4Id,
+    hostUserId: dummyUsers[9].id,
+    missionId: missions[4].id, // 전통시장 미션
+    scheduledAt: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000),
+    recruitUntil: new Date(Date.now() - 14.5 * 24 * 60 * 60 * 1000),
+    status: MeetingStatus.COMPLETED,
+    maxParticipants: 4,
+    minimumParticipants: 3,
+    requiredPoints: 400,
+    rewardPoints: 600,
+    introduction: '전통시장 구경하며 장보기!',
+    focusScore: 80,
+  });
+  await meetingRepository.save(pastMeeting4);
+
+  // 호스트 참가
+  await participantRepository.save({
+    meetingId: pastMeeting4Id,
+    userId: dummyUsers[9].id,
+    isHost: true,
+    status: ParticipantStatus.JOINED,
+    pointsPaid: true,
+    paidAmount: 600,
+    paymentTransactionId: ulid(),
+  });
+
+  // 테스트 계정 1 참가
+  await participantRepository.save({
+    meetingId: pastMeeting4Id,
+    userId: testUser1.id,
+    isHost: false,
+    status: ParticipantStatus.JOINED,
+    pointsPaid: true,
+    paidAmount: 400,
+    paymentTransactionId: ulid(),
+  });
+
+  // 다른 참가자
+  await participantRepository.save({
+    meetingId: pastMeeting4Id,
+    userId: dummyUsers[10].id,
+    isHost: false,
+    status: ParticipantStatus.JOINED,
+    pointsPaid: true,
+    paidAmount: 400,
+    paymentTransactionId: ulid(),
+  });
+
+  // 리뷰 추가
+  await missionReviewRepository.save({
+    meetingId: pastMeeting4Id,
+    userId: testUser1.id,
+    reviewText: '전통시장의 정겨운 분위기를 느낄 수 있었어요. 시장 상인분들도 친절하시고 재미있는 경험이었습니다!',
+    rating: 5,
+    photoUrls: ['https://example.com/market1.jpg'],
+    earnedPoints: 600,
+    pointCalculationDetails: { basePoints: 400, bonusPoints: 200 },
+    verifiedAt: new Date(Date.now() - 13.9 * 24 * 60 * 60 * 1000),
+  });
+
+  logger.info('✅ 과거 활동 4 생성 완료 (전통시장 미션)');
+
+  logger.info('🎯 테스트 계정 1의 과거 활동 내역 생성 완료 (총 4개 모임 참여)');
 };

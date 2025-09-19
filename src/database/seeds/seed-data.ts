@@ -10,6 +10,8 @@ import {
   seedDummyUsers,
   seedSampleMeetings,
   seedGiftCards,
+  seedActivityLogs,
+  seedMeetingLikes,
 } from './data';
 
 export const seedInitialData = async (dataSource: DataSource) => {
@@ -52,6 +54,12 @@ export const seedInitialData = async (dataSource: DataSource) => {
   // 기프티콘 데이터 시딩
   await seedGiftCards(dataSource.getRepository('GiftCard'));
   logger.info('🎁 Gift cards seeded');
+
+  // 최근활동 데이터 시딩
+  await seedActivityLogs(dataSource, logger);
+
+  // 모임 좋아요 데이터 시딩
+  await seedMeetingLikes(dataSource, logger);
 
   logger.info('🌱 Initial data seeding has been completed.');
 };
