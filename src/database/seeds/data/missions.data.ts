@@ -31,7 +31,7 @@ const missionData: MissionSeedData[] = [
     minimumDuration: 60,
     difficulty: MissionDifficulty.VERY_EASY,
     thumbnailUrl:
-      'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=400&h=300&fit=crop',
+      'https://nullisdefined.s3.ap-northeast-2.amazonaws.com/images/cb52a5357c42165bf92cd54ad3fb67bb.png',
     categorySlug: 'cafe',
     location: '석촌호수 카페거리',
     photoVerificationGuide:
@@ -84,7 +84,7 @@ const missionData: MissionSeedData[] = [
     minimumDuration: 120,
     difficulty: MissionDifficulty.MEDIUM,
     thumbnailUrl:
-      'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=400&h=300&fit=crop',
+      'https://nullisdefined.s3.ap-northeast-2.amazonaws.com/images/75284791ac3fc7df3dfd4686b1af9bcd.png',
     categorySlug: 'culture',
     location: '한성백제박물관',
     photoVerificationGuide:
@@ -112,14 +112,11 @@ const missionData: MissionSeedData[] = [
     minimumDuration: 20,
     difficulty: MissionDifficulty.VERY_EASY,
     thumbnailUrl:
-      'https://halsaram-prompts.s3.ap-northeast-2.amazonaws.com/thumbnail/test-cafestudy-001_1.jpg',
+      'https://nullisdefined.s3.ap-northeast-2.amazonaws.com/images/855126e3bc730b4f617f63ee5762f6bf.png',
     categorySlug: 'cafe',
     photoVerificationGuide:
       '1단계: 컵홀더/메뉴/영수증 등에서 \'센터필드\' 텍스트가 읽히도록 근접 촬영(얼굴 미노출).\n2단계: 카페 테이블에서 노트북이 3대 이상 동시에 보이도록 프레이밍(얼굴/상반신 미노출).',
-    sampleImageUrls: [
-      'https://halsaram-prompts.s3.ap-northeast-2.amazonaws.com/guides/test-cafestudy-001_1.jpg',
-      'https://halsaram-prompts.s3.ap-northeast-2.amazonaws.com/guides/test-cafestudy-001_2.jpeg',
-    ],
+    sampleImageUrls: [],
     precautions: [
       '매장 및 다른 손님 동선 방해 금지',
       '얼굴 등 식별 정보가 프레임에 나오지 않도록 주의',
@@ -136,14 +133,11 @@ const missionData: MissionSeedData[] = [
     minimumDuration: 40,
     difficulty: MissionDifficulty.EASY,
     thumbnailUrl:
-      'https://halsaram-prompts.s3.ap-northeast-2.amazonaws.com/thumbnail/c89cedcf-a1ac-487b-9c23-43137bde09da_1.jpeg',
+      'https://nullisdefined.s3.ap-northeast-2.amazonaws.com/images/54ae17fd913cc1d27cd9ff63b26669fa.png',
     categorySlug: 'food',
     photoVerificationGuide:
       '시장 입구 간판 텍스트가 보이도록 촬영(손/소지품 중심, 얼굴 미노출)\n팀원 4명이 구매한 전통 먹거리를 들고 함께 촬영(손/소지품 중심, 얼굴 미노출)',
-    sampleImageUrls: [
-      'https://halsaram-prompts.s3.ap-northeast-2.amazonaws.com/guides/c89cedcf-a1ac-487b-9c23-43137bde09da_1.jpg',
-      'https://halsaram-prompts.s3.ap-northeast-2.amazonaws.com/guides/c89cedcf-a1ac-487b-9c23-43137bde09da_2.jpg',
-    ],
+    sampleImageUrls: [],
     precautions: [
       '다른 방문객들에게 방해가 되지 않도록 주의해주세요.',
       '상인분들께 예의를 지켜주세요.',
@@ -159,14 +153,11 @@ const missionData: MissionSeedData[] = [
     minimumDuration: 30,
     difficulty: MissionDifficulty.EASY,
     thumbnailUrl:
-      'https://halsaram-prompts.s3.ap-northeast-2.amazonaws.com/thumbnail/81c07b90-ab53-4cc4-8640-5ce643173d8a_1.png',
+      'https://nullisdefined.s3.ap-northeast-2.amazonaws.com/images/f01cf5c0c08b379045f026880b9b6367.png',
     categorySlug: 'culture',
     photoVerificationGuide:
       '호수 입구에 있는 안내판 텍스트가 보이도록 촬영(손/소지품 중심, 얼굴 미노출)\n팀원 4명과 반려견이 함께 산책하는 모습을 촬영(반려견과 핸드프린트만 나오도록, 얼굴 미노출)',
-    sampleImageUrls: [
-      'https://halsaram-prompts.s3.ap-northeast-2.amazonaws.com/guides/81c07b90-ab53-4cc4-8640-5ce643173d8a_2.jpeg',
-      'https://halsaram-prompts.s3.ap-northeast-2.amazonaws.com/guides/81c07b90-ab53-4cc4-8640-5ce643173d8a_2.jpg',
-    ],
+    sampleImageUrls: [],
     precautions: [
       '반려견 배변봉투와 목줄을 꼭 지참해주세요.',
       '다른 방문객들에게 방해가 되지 않도록 주의해주세요.',
@@ -182,13 +173,12 @@ const missionData: MissionSeedData[] = [
     minimumDuration: 15,
     difficulty: MissionDifficulty.EASY,
     thumbnailUrl:
-      'https://halsaram-prompts.s3.ap-northeast-2.amazonaws.com/thumbnail/test-seokchon-thumbsup-001_1.jpg',
+      'https://nullisdefined.s3.ap-northeast-2.amazonaws.com/images/0b0a20bbfaa443f27d9ec56a1f9c26a8.png',
     categorySlug: 'culture',
     photoVerificationGuide:
       '석촌호수 보이도록 촬영(얼굴 미노출).\n팀원 4명이 동시에 엄지척을 내밀고, 4개의 엄지가 모두 보이도록 촬영(손만 프레임).',
     sampleImageUrls: [
-      'https://halsaram-prompts.s3.ap-northeast-2.amazonaws.com/guides/test-seokchon-thumbsup-001_1.jpg',
-      'https://halsaram-prompts.s3.ap-northeast-2.amazonaws.com/guides/test-seokchon-thumbsup-001_2.jpg',
+      'https://nullisdefined.s3.ap-northeast-2.amazonaws.com/images/e60fc6fbc4ec47accc5e08d8db7ab19a.png',
     ],
     precautions: [
       '주변 산책객에게 방해되지 않게 서서 촬영해주세요.',
@@ -260,15 +250,11 @@ const missionData: MissionSeedData[] = [
     minimumDuration: 50,
     difficulty: MissionDifficulty.HARD,
     thumbnailUrl:
-      'https://halsaram-prompts.s3.ap-northeast-2.amazonaws.com/thumbnail/98b62638-6a47-48e8-83aa-900f3813bac8_1.jpeg',
+      'https://nullisdefined.s3.ap-northeast-2.amazonaws.com/images/9564dedb17e0b9aab9493cc7c16ded55.png',
     categorySlug: 'sports',
     photoVerificationGuide:
       '한강 조깅 코스 안내판 텍스트가 보이도록 촬영(손/소지품 중심, 얼굴 미노출)\n자전거 도로를 달리는 팀원들의 모습을 촬영(발/자전거 중심, 얼굴 미노출)\n팀원 6명이 삼각형 포즈를 취한 모습을 촬영(손/소지품 중심, 얼굴 미노출)',
-    sampleImageUrls: [
-      'https://halsaram-prompts.s3.ap-northeast-2.amazonaws.com/guides/98b62638-6a47-48e8-83aa-900f3813bac8_1.jpg',
-      'https://halsaram-prompts.s3.ap-northeast-2.amazonaws.com/guides/98b62638-6a47-48e8-83aa-900f3813bac8_2.jpg',
-      'https://halsaram-prompts.s3.ap-northeast-2.amazonaws.com/guides/98b62638-6a47-48e8-83aa-900f3813bac8_3.png',
-    ],
+    sampleImageUrls: [],
     precautions: [
       '안전하게 활동해주세요.',
       '다른 방문객들에게 방해되지 않도록 주의해주세요.',

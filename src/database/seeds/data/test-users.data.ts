@@ -68,8 +68,7 @@ export const seedTestUsers = async (
     const hostProfile = userProfileRepository.create({
       userId: hostUserId,
       nickname: '무서운고구마',
-      profileImageUrl:
-        'https://nullisdefined.s3.ap-northeast-2.amazonaws.com/images/0d9bbb3880a7aaea39b4276d129300f6.png',
+      profileImageUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=무서운고구마`,
       bio: '새로운 사람들과 함께 재미있는 경험을 만들어가는 걸 좋아해요! 😊',
       birthYear: 1995,
       gender: Gender.MALE,
@@ -110,8 +109,7 @@ export const seedTestUsers = async (
     const participantProfile = userProfileRepository.create({
       userId: participantUserId,
       nickname: '겁없는감자',
-      profileImageUrl:
-        'https://nullisdefined.s3.ap-northeast-2.amazonaws.com/images/88e4d0b5402be0ed2aef01d2a34b67d9.png',
+      profileImageUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=겁없는감자`,
       bio: '새로운 경험과 사람들을 만나는 걸 좋아해요! 함께 즐거운 시간 만들어요~',
       birthYear: 1998,
       gender: Gender.FEMALE,

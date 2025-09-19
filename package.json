@@ -27,7 +27,7 @@
     "migration:revert": "npm run typeorm -- migration:revert -d src/config/typeorm.config.ts",
     "schema:drop": "npm run typeorm -- schema:drop -d src/config/typeorm.config.ts",
     "schema:create": "npm run typeorm -- schema:sync -d src/config/typeorm.config.ts",
-    "_db:refresh": "npm run schema:drop && npm run schema:create && npm run seed",
+    "db:refresh": "npm run schema:drop && npm run schema:create && npm run seed",
     "meetings:refresh": "NODE_ENV=development ts-node -r tsconfig-paths/register src/database/seeds/refresh-meetings.ts",
     "version:patch": "npm version patch --no-git-tag-version",
     "version:minor": "npm version minor --no-git-tag-version",
